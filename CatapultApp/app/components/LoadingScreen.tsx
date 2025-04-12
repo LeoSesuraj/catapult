@@ -14,6 +14,7 @@ const LoadingScreen = () => {
     // Animated values
     const planeXAnim = useRef(new Animated.Value(-50)).current; // Horizontal movement
     const planeYAnim = useRef(new Animated.Value(0)).current; // Vertical movement
+    const planeRotateAnim = useRef(new Animated.Value(0)).current; // Rotation for more dynamic flight
     const cloud1Anim = useRef(new Animated.Value(0)).current;
     const cloud2Anim = useRef(new Animated.Value(0)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
@@ -23,6 +24,7 @@ const LoadingScreen = () => {
         const animatePlane = () => {
             planeXAnim.setValue(-50);
             planeYAnim.setValue(0);
+            planeRotateAnim.setValue(0);
 
             Animated.parallel([
                 // Horizontal: Left to right with smooth easing
@@ -36,19 +38,37 @@ const LoadingScreen = () => {
                 Animated.loop(
                     Animated.sequence([
                         Animated.timing(planeYAnim, {
-                            toValue: -8,
-                            duration: 3000,
+                            toValue: -12, // Increased amplitude
+                            duration: 2500,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                         Animated.timing(planeYAnim, {
-                            toValue: 8,
-                            duration: 3000,
+                            toValue: 12, // Increased amplitude
+                            duration: 2500,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                     ]),
-                    { iterations: 1.7 }
+                    { iterations: 2 }
+                ),
+                // Rotation animation for more dynamic flight
+                Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(planeRotateAnim, {
+                            toValue: 5,
+                            duration: 2500,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(planeRotateAnim, {
+                            toValue: -5,
+                            duration: 2500,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        }),
+                    ]),
+                    { iterations: 2 }
                 ),
             ]).start(() => animatePlane());
         };
@@ -128,6 +148,9 @@ const LoadingScreen = () => {
                             <View style={[styles.star, { top: '15%', right: '25%' }]} />
                             <View style={[styles.star, { top: '60%', right: '15%' }]} />
                             <View style={[styles.star, { top: '35%', right: '35%' }]} />
+                            <View style={[styles.star, { top: '25%', left: '35%' }]} />
+                            <View style={[styles.star, { top: '55%', left: '25%' }]} />
+                            <View style={[styles.star, { top: '70%', left: '55%' }]} />
                         </LinearGradient>
 
                         {/* Flight path */}
@@ -173,11 +196,17 @@ const LoadingScreen = () => {
                                     transform: [
                                         { translateX: planeXAnim },
                                         { translateY: planeYAnim },
+                                        {
+                                            rotate: planeRotateAnim.interpolate({
+                                                inputRange: [-5, 5],
+                                                outputRange: ['-5deg', '5deg']
+                                            })
+                                        }
                                     ],
                                 },
                             ]}
                         >
-                            <FontAwesome name="plane" size={24} color="#FFFFFF" style={styles.planeIcon} />
+                            <FontAwesome name="plane" size={36} color="#FFFFFF" style={styles.planeIcon} />
                         </Animated.View>
                     </View>
 
