@@ -14,7 +14,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.darkGray,
+        tabBarInactiveTintColor: Colors.mediumGray,
         tabBarLabelStyle: {
           fontFamily: FontFamily.montserratMedium,
           fontSize: 12,
@@ -23,19 +23,24 @@ export default function TabLayout() {
           height: 60,
           paddingBottom: 8,
           paddingTop: 6,
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.offWhite,
+          borderTopWidth: 0,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
           ...Shadow.small,
         },
         headerStyle: {
-          backgroundColor: Colors.white,
-          ...Shadow.subtle,
+          backgroundColor: Colors.offWhite,
+          elevation: 0,
+          shadowOpacity: 0,
+          height: 50,
         },
         headerTitleStyle: {
-          fontFamily: FontFamily.montserratSemiBold,
-          fontSize: 18,
-          color: Colors.darkGray,
+          display: 'none',
         },
-        headerTitleAlign: 'center',
+        headerShown: false,
       }}>
       {/* <Tabs.Screen
         name="index"

@@ -11,37 +11,37 @@ const tintColorLight = '#B3D4FF';
 const tintColorDark = '#fff';
 
 export const Colors = {
-  primary: '#B3D4FF', // Light blue
-  secondary: '#FFD1DC', // Blush pink
-  accent: '#C1E1C1', // Mint green
-  gold: '#E6C200', // Subtle gold
-  white: '#FFFFFF', // White background
-  offWhite: '#F8F8F8', // Off-white for cards
+  primary: '#4A90E2', // Bright blue
+  secondary: '#2C3E50', // Dark blue-gray
+  accent: '#27AE60', // Dark green
+  gold: '#F39C12', // Orange-gold
+  white: '#FFFFFF',
+  offWhite: '#1E1E1E', // Dark background for cards
   black: '#000000',
-  lightGray: '#F5F5F5',
-  gray: '#CCCCCC',
-  mediumGray: '#666666', // Medium gray text
-  darkGray: '#333333', // Dark gray text
-  text: '#333333',
-  background: '#FFFFFF',
-  error: '#FF6B6B',
-  success: '#4BB543',
-  warning: '#FFD700',
+  lightGray: '#2C2C2C',
+  gray: '#4A4A4A',
+  mediumGray: '#AAAAAA', // Light gray text
+  darkGray: '#EEEEEE', // Almost white text
+  text: '#EEEEEE',
+  background: '#121212', // Very dark background
+  error: '#E74C3C',
+  success: '#2ECC71',
+  warning: '#F1C40F',
   light: {
-    text: '#333333',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#333333',
-    tabIconDefault: '#666666',
-    tabIconSelected: tintColorLight,
+    text: '#EEEEEE',
+    background: '#121212',
+    tint: '#4A90E2',
+    icon: '#EEEEEE',
+    tabIconDefault: '#AAAAAA',
+    tabIconSelected: '#4A90E2',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#EEEEEE',
+    background: '#121212',
+    tint: '#4A90E2',
+    icon: '#EEEEEE',
+    tabIconDefault: '#AAAAAA',
+    tabIconSelected: '#4A90E2',
   },
 };
 
