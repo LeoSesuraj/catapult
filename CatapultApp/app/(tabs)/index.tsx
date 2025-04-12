@@ -1,11 +1,12 @@
+// /CatapultApp/app/(tabs)/index.tsx
 import { StyleSheet, Text, View, Animated, FlatList, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import Colors from '@/constants/Colors';
-import { FontFamily, FontSizes, Spacing, TextStyle, CardStyle, BorderRadius, Shadow } from '@/constants/Theme';
+import { FontFamily, Spacing, BorderRadius, Shadow } from '@/constants/Theme';
+import { useSurvey } from '../survey/SurveyContext';
 
 type Trip = {
   id: string;
@@ -17,43 +18,7 @@ type Trip = {
 
 export default function TripsScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [trips, setTrips] = useState<Trip[]>([
-    {
-      id: '5',
-      destination: 'Chicago, USA',
-      image: 'https://images.unsplash.com/photo-1494522358652-f30e61a60313?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      dates: 'April 20-25, 2025',
-      status: 'upcoming',
-    },
-    {
-      id: '1',
-      destination: 'Paris, France',
-      image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      dates: 'June 5-10, 2025',
-      status: 'upcoming',
-    },
-    {
-      id: '2',
-      destination: 'Tokyo, Japan',
-      image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      dates: 'August 12-22, 2025',
-      status: 'upcoming',
-    },
-    {
-      id: '3',
-      destination: 'Barcelona, Spain',
-      image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      dates: 'March 3-8, 2025',
-      status: 'past',
-    },
-    {
-      id: '4',
-      destination: 'New York, USA',
-      image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      dates: 'Planning in progress',
-      status: 'draft',
-    },
-  ]);
+  const { trips } = useSurvey();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -68,8 +33,7 @@ export default function TripsScreen() {
   };
 
   const handleCreateTrip = () => {
-    console.log('Create new trip');
-    router.push('/survey/index');
+    router.push('/survey');
   };
 
   const renderTripCard = ({ item }: { item: Trip }) => {
@@ -122,7 +86,8 @@ export default function TripsScreen() {
           <View style={styles.header}>
             <Text style={styles.headerTitle}>My Trips</Text>
             <TouchableOpacity style={styles.createButton} onPress={handleCreateTrip}>
-              <FontAwesome name="plus" size={16} color="#FFFFFF" />
+              <FontAwesome name="plus" size={16} color="#FFFFFF" style={styles.createButtonIcon} />
+              <Text style={styles.createButtonText}>New Trip</Text>
             </TouchableOpacity>
           </View>
 
@@ -166,17 +131,26 @@ const styles = StyleSheet.create({
   },
   createButton: {
     backgroundColor: '#4A5568',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.lg,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     ...Shadow.medium,
+  },
+  createButtonIcon: {
+    marginRight: 8,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: FontFamily.montserratSemiBold,
   },
   listContainer: {
     padding: Spacing.lg,
     paddingTop: Spacing.sm,
-    paddingBottom: 100, // Extra padding for nav bar
+    paddingBottom: 100,
   },
   cardContainer: {
     marginBottom: Spacing.lg,
