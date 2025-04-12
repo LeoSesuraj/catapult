@@ -1,0 +1,13 @@
+{
+    "flight": {
+        "airline": "F9",
+        "flight_number": "2111",
+        "from": "PHL",
+        "to": "ORD",
+        "departure_time": "2025-05-09T05:17:00",
+        "arrival_time": "2025-05-09T06:42:00",
+        "price": "72.96",
+        "currency": "USD",
+        "status": "pending"
+    }
+}
