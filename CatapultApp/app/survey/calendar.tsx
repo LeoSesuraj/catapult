@@ -153,18 +153,27 @@ export default function CalendarScreen() {
 
                         {selectedStartDate && selectedEndDate && (
                             <View style={styles.infoContainer}>
-                                <Text style={styles.dateRangeText}>
-                                    <FontAwesome
-                                        name="calendar"
-                                        size={16}
-                                        color="#4285F4"
-                                        style={styles.infoIcon}
-                                    />
-                                    {moment(selectedStartDate).format('MMM D')} - {moment(selectedEndDate).format('MMM D, YYYY')}
-                                </Text>
-                                <Text style={styles.durationText}>
-                                    Trip duration: {moment(selectedEndDate).diff(moment(selectedStartDate), 'days') + 1} days
-                                </Text>
+                                <View style={styles.dateRow}>
+                                    <View style={styles.iconContainer}>
+                                        <FontAwesome name="calendar" size={16} color="#4285F4" />
+                                    </View>
+                                    <View style={styles.dateInfo}>
+                                        <View style={styles.dateRange}>
+                                            <Text style={styles.dateLabel}>Start</Text>
+                                            <Text style={styles.dateText}>{moment(selectedStartDate).format('MMM D, YYYY')}</Text>
+                                        </View>
+                                        <View style={styles.dateDivider} />
+                                        <View style={styles.dateRange}>
+                                            <Text style={styles.dateLabel}>End</Text>
+                                            <Text style={styles.dateText}>{moment(selectedEndDate).format('MMM D, YYYY')}</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                                <View style={styles.durationContainer}>
+                                    <Text style={styles.durationText}>
+                                        {moment(selectedEndDate).diff(moment(selectedStartDate), 'days') + 1} days
+                                    </Text>
+                                </View>
                             </View>
                         )}
 
@@ -233,7 +242,7 @@ const styles = StyleSheet.create({
     infoContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderRadius: BorderRadius.lg,
-        padding: Spacing.md,
+        padding: Spacing.lg,
         marginBottom: Spacing.xl,
     },
     infoText: {
@@ -246,16 +255,56 @@ const styles = StyleSheet.create({
     infoIcon: {
         marginRight: Spacing.sm,
     },
-    dateRangeText: {
+    dateRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    iconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(66, 133, 244, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: Spacing.md,
+    },
+    dateInfo: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    dateRange: {
+        flex: 1,
+    },
+    dateLabel: {
+        fontSize: 12,
+        fontFamily: FontFamily.montserratMedium,
+        color: '#A0AEC0',
+        marginBottom: 4,
+    },
+    dateText: {
         fontSize: 16,
         fontFamily: FontFamily.montserratSemiBold,
         color: '#FFFFFF',
-        marginBottom: Spacing.sm,
+    },
+    dateDivider: {
+        width: 1,
+        height: '80%',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        marginHorizontal: Spacing.md,
+    },
+    durationContainer: {
+        marginTop: Spacing.md,
+        paddingTop: Spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.1)',
     },
     durationText: {
         fontSize: 16,
         fontFamily: FontFamily.montserratMedium,
         color: '#4285F4',
+        textAlign: 'center',
     },
     nextButton: {
         padding: Spacing.md,
