@@ -3,30 +3,31 @@ import json
 
 amadeus = Client(client_id='4DOHUkYZtyPPu4FrRG8cmzXqrnhwwNby', client_secret='yG0IHsgf3eRA0J0d')
 
-# agent finds hotels in a city
-
-def get_hotels_by_city(cityCode):
+def get_hotel(cityCode):
     try:
         response = amadeus.reference_data.locations.hotels.by_city.get(cityCode=cityCode)
-        return response.data
+        hotels = response.data
+        
+        # filename = "hotel.json"
+        # with open(filename, 'w') as file:
+        #     json.dump(hotels, file, indent=4)
+        
+        # find the first hotel with availability
+        
+        for hotel in hotels:
+            hotelId = hotel["hotelId"]
+            canBook = get_hotel_offers(hotelId)
+            
+            if canBook:
+                return hotel
+        
+        print("Not found")
     except ResponseError as e:
         print(e)
 
-# user picks one of those hotels
+# finds available offers by using the selected hotelId
 
-def get_hotelId(hotelsData, hotelName):
-    with open(hotelsData) as data:
-        hotels = json.load(data)
-    
-    for hotel in hotels:
-        if hotel["name"] == hotelName: 
-            return hotel["hotelId"]
-    
-    print("Couldn't find this hotel")
-
-# agent finds available offers by using the selected hotelId
-
-def get_hotel_offers(hotelId, adults):
+def get_hotel_offers(hotelId, adults=1):
     try:
         response = amadeus.shopping.hotel_offers_search.get(hotelIds=hotelId, adults=adults)
         return response.data
@@ -64,7 +65,3 @@ def get_hotel_offers(hotelId, adults):
 #         print(e)
 
 # data = book_hotel("J2CS92VSKW")
-
-# filename = "booking.json"
-# with open(filename, 'w') as file:
-#     json.dump(data, file, indent=4)
