@@ -1,186 +1,212 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, Animated, StyleSheet, Dimensions, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontFamily } from '../../constants/Theme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { FontFamily, Spacing, BorderRadius } from '../../constants/Theme';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-export default function LoadingScreen() {
-    const planeX = useRef(new Animated.Value(-50)).current;
-    const planeY = useRef(new Animated.Value(height * 0.5)).current;
-    const planeRotation = useRef(new Animated.Value(0)).current;
-    const planeScale = useRef(new Animated.Value(1)).current;
-    const cloudOpacity1 = useRef(new Animated.Value(0)).current;
-    const cloudOpacity2 = useRef(new Animated.Value(0)).current;
-    const cloudOpacity3 = useRef(new Animated.Value(0)).current;
+const LoadingScreen = () => {
+    // Ref for loading dots
+    const loadingDots = useRef('');
+    const dotAnimationId = useRef<NodeJS.Timeout | null>(null);
+
+    // Animated values
+    const planeXAnim = useRef(new Animated.Value(-50)).current; // Horizontal movement
+    const planeYAnim = useRef(new Animated.Value(0)).current; // Vertical movement
+    const cloud1Anim = useRef(new Animated.Value(0)).current;
+    const cloud2Anim = useRef(new Animated.Value(0)).current;
+    const progressAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Complex plane path animation
+        // Plane animation
         const animatePlane = () => {
-            const duration = 3000; // 3 seconds for one complete journey
+            planeXAnim.setValue(-50);
+            planeYAnim.setValue(0);
 
-            // Create a curved path using parallel animations
             Animated.parallel([
-                // X movement
-                Animated.sequence([
-                    Animated.timing(planeX, {
-                        toValue: width * 0.3,
-                        duration: duration * 0.25,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(planeX, {
-                        toValue: width * 0.7,
-                        duration: duration * 0.5,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(planeX, {
-                        toValue: width + 50,
-                        duration: duration * 0.25,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                ]),
-                // Y movement (curved path)
-                Animated.sequence([
-                    Animated.timing(planeY, {
-                        toValue: height * 0.3,
-                        duration: duration * 0.25,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(planeY, {
-                        toValue: height * 0.7,
-                        duration: duration * 0.5,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(planeY, {
-                        toValue: height * 0.4,
-                        duration: duration * 0.25,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                ]),
-                // Rotation for dynamic movement
-                Animated.sequence([
-                    Animated.timing(planeRotation, {
-                        toValue: 15,
-                        duration: duration * 0.25,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(planeRotation, {
-                        toValue: -15,
-                        duration: duration * 0.5,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(planeRotation, {
-                        toValue: 0,
-                        duration: duration * 0.25,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                ]),
-                // Scale animation for depth effect
-                Animated.sequence([
-                    Animated.timing(planeScale, {
-                        toValue: 1.2,
-                        duration: duration * 0.5,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(planeScale, {
-                        toValue: 1,
-                        duration: duration * 0.5,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                ]),
-            ]).start();
+                // Horizontal: Left to right with smooth easing
+                Animated.timing(planeXAnim, {
+                    toValue: width + 50,
+                    duration: 10000,
+                    easing: Easing.bezier(0.4, 0, 0.2, 1),
+                    useNativeDriver: true,
+                }),
+                // Vertical: Continuous smooth up-and-down
+                Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(planeYAnim, {
+                            toValue: -8,
+                            duration: 3000,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(planeYAnim, {
+                            toValue: 8,
+                            duration: 3000,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        }),
+                    ]),
+                    { iterations: 1.7 }
+                ),
+            ]).start(() => animatePlane());
         };
-
         animatePlane();
 
-        // Enhanced cloud animations
-        const animateCloud = (opacity: Animated.Value, delay: number) => {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(opacity, {
-                        toValue: 1,
-                        duration: 1200,
-                        delay,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(opacity, {
-                        toValue: 0.2,
-                        duration: 1200,
-                        useNativeDriver: true,
-                    })
-                ])
-            ).start();
+        // Cloud animations
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(cloud1Anim, {
+                    toValue: 1,
+                    duration: 8000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(cloud1Anim, {
+                    toValue: 0,
+                    duration: 0,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(cloud2Anim, {
+                    toValue: 1,
+                    duration: 12000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(cloud2Anim, {
+                    toValue: 0,
+                    duration: 0,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+
+        // Progress animation
+        Animated.timing(progressAnim, {
+            toValue: 1,
+            duration: 10000,
+            useNativeDriver: false,
+        }).start();
+
+        // Loading dots
+        dotAnimationId.current = setInterval(() => {
+            loadingDots.current = loadingDots.current.length >= 3 ? '' : loadingDots.current + '.';
+        }, 500);
+
+        // Cleanup
+        return () => {
+            if (dotAnimationId.current) {
+                clearInterval(dotAnimationId.current);
+            }
+            planeXAnim.stopAnimation();
+            planeYAnim.stopAnimation();
+            cloud1Anim.stopAnimation();
+            cloud2Anim.stopAnimation();
+            progressAnim.stopAnimation();
         };
-
-        animateCloud(cloudOpacity1, 0);
-        animateCloud(cloudOpacity2, 400);
-        animateCloud(cloudOpacity3, 800);
-    }, []);
-
-    const rotation = planeRotation.interpolate({
-        inputRange: [-15, 15],
-        outputRange: ['-15deg', '15deg']
-    });
+    }, [planeXAnim, planeYAnim, cloud1Anim, cloud2Anim, progressAnim]);
 
     return (
         <View style={styles.container}>
-            <LinearGradient
-                colors={['#1a202c', '#2d3748']}
-                style={styles.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            >
+            <LinearGradient colors={['#1a202c', '#2d3748']} style={styles.gradient}>
                 <View style={styles.content}>
-                    {/* World Map Overlay */}
-                    <View style={styles.worldMapOverlay} />
+                    {/* Flight animation container */}
+                    <View style={styles.animationContainer}>
+                        <LinearGradient
+                            colors={['#2a4365', '#2c5282']}
+                            style={styles.skyBackground}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
+                        >
+                            {/* Stars */}
+                            <View style={[styles.star, { top: '20%', left: '15%' }]} />
+                            <View style={[styles.star, { top: '40%', left: '45%' }]} />
+                            <View style={[styles.star, { top: '15%', right: '25%' }]} />
+                            <View style={[styles.star, { top: '60%', right: '15%' }]} />
+                            <View style={[styles.star, { top: '35%', right: '35%' }]} />
+                        </LinearGradient>
 
-                    {/* Clouds */}
-                    <Animated.View style={[styles.cloud, { opacity: cloudOpacity1, left: '10%', top: '20%' }]}>
-                        <FontAwesome name="cloud" size={40} color="rgba(255,255,255,0.5)" />
-                    </Animated.View>
-                    <Animated.View style={[styles.cloud, { opacity: cloudOpacity2, left: '45%', top: '35%' }]}>
-                        <FontAwesome name="cloud" size={35} color="rgba(255,255,255,0.5)" />
-                    </Animated.View>
-                    <Animated.View style={[styles.cloud, { opacity: cloudOpacity3, left: '75%', top: '25%' }]}>
-                        <FontAwesome name="cloud" size={45} color="rgba(255,255,255,0.5)" />
-                    </Animated.View>
+                        {/* Flight path */}
+                        <View style={styles.flightPath} />
 
-                    {/* Animated Plane */}
-                    <Animated.View
-                        style={[
-                            styles.plane,
-                            {
-                                transform: [
-                                    { translateX: planeX },
-                                    { translateY: planeY },
-                                    { rotate: rotation },
-                                    { scale: planeScale }
-                                ]
-                            }
-                        ]}
-                    >
-                        <FontAwesome name="plane" size={40} color="#48BB78" />
-                    </Animated.View>
+                        {/* Clouds */}
+                        <Animated.View
+                            style={[
+                                styles.cloud1,
+                                {
+                                    transform: [
+                                        {
+                                            translateX: cloud1Anim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [-50, width],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.cloud2,
+                                {
+                                    transform: [
+                                        {
+                                            translateX: cloud2Anim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [-70, width],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                        />
 
-                    <Text style={styles.text}>Planning your adventure...</Text>
-                    <Text style={styles.subtext}>Your journey begins here</Text>
+                        {/* Animated Plane */}
+                        <Animated.View
+                            style={[
+                                styles.plane,
+                                {
+                                    transform: [
+                                        { translateX: planeXAnim },
+                                        { translateY: planeYAnim },
+                                    ],
+                                },
+                            ]}
+                        >
+                            <FontAwesome name="plane" size={24} color="#FFFFFF" style={styles.planeIcon} />
+                        </Animated.View>
+                    </View>
+
+                    {/* Progress bar */}
+                    <View style={styles.progressContainer}>
+                        <View style={styles.progressTrack}>
+                            <Animated.View
+                                style={[
+                                    styles.progressBar,
+                                    {
+                                        width: progressAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: ['0%', '100%'],
+                                        }),
+                                    },
+                                ]}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Loading text */}
+                    <Text style={styles.loadingText}>
+                        Preparing Your Journey{loadingDots.current}
+                    </Text>
                 </View>
             </LinearGradient>
         </View>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -189,44 +215,90 @@ const styles = StyleSheet.create({
     },
     gradient: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     content: {
         flex: 1,
-        width: '100%',
-        height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingHorizontal: 24,
     },
-    worldMapOverlay: {
+    animationContainer: {
+        width: '100%',
+        height: 150,
+        marginBottom: 32,
+        position: 'relative',
+    },
+    skyBackground: {
         position: 'absolute',
-        width: '80%',
-        height: '40%',
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderRadius: 200,
+        width: '100%',
+        height: '100%',
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    star: {
+        position: 'absolute',
+        width: 3,
+        height: 3,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 1.5,
+        opacity: 0.7,
+    },
+    flightPath: {
+        position: 'absolute',
+        top: '45%', // Center between clouds
+        left: 0,
+        right: 0,
+        height: 1,
+        backgroundColor: '#FFFFFF',
+        opacity: 0.2,
+        transform: [{ translateY: -0.5 }],
+    },
+    cloud1: {
+        position: 'absolute',
         top: '30%',
+        width: 48,
+        height: 24,
+        backgroundColor: '#FFFFFF',
+        opacity: 0.3,
+        borderRadius: 12,
+    },
+    cloud2: {
+        position: 'absolute',
+        top: '60%',
+        width: 64,
+        height: 20,
+        backgroundColor: '#FFFFFF',
+        opacity: 0.2,
+        borderRadius: 10,
     },
     plane: {
         position: 'absolute',
+        top: '45%', // Center between clouds
         zIndex: 10,
     },
-    cloud: {
-        position: 'absolute',
-        zIndex: 5,
+    planeIcon: {
+        transform: [{ rotate: '45deg' }],
     },
-    text: {
-        fontSize: 24,
-        fontFamily: FontFamily.montserratBold,
+    progressContainer: {
+        width: '100%',
+        marginBottom: 32,
+    },
+    progressTrack: {
+        height: 4,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        backgroundColor: '#3333ff',
+    },
+    loadingText: {
+        fontSize: 18,
+        fontFamily: FontFamily.montserratSemiBold,
         color: '#FFFFFF',
-        marginTop: height * 0.4,
         textAlign: 'center',
     },
-    subtext: {
-        fontSize: 16,
-        fontFamily: FontFamily.montserratMedium,
-        color: '#A0AEC0',
-        marginTop: 8,
-        textAlign: 'center',
-    },
-}); 
+});
+
+export default LoadingScreen;

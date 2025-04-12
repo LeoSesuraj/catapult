@@ -38,6 +38,7 @@
     "expo-web-browser": "~14.0.2",
     "framer-motion": "^12.6.5",
     "framesync": "^6.1.2",
+    "lucide-react": "^0.487.0",
     "moment": "^2.30.1",
     "moti": "^0.30.0",
     "react": "18.3.1",
