@@ -1,6 +1,6 @@
-import { Animated, Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Feather from '@expo/vector-icons/Feather';
 import { useRef, useEffect } from 'react';
 
 import Colors from '@/constants/Colors';
@@ -9,7 +9,7 @@ import { BorderRadius, FontFamily, FontSizes, Shadow, Spacing, TextStyle, Button
 export default function HomeScreen() {
   // Animation for the Create Trip button
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  // Animation for fade-in cards
+  // Animation for fade-in card
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -41,58 +41,50 @@ export default function HomeScreen() {
       <ImageBackground
         source={require('@/assets/images/map-texture.png')}
         style={styles.bgImage}
-        imageStyle={{ opacity: 0.1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.header}>
-            <Text style={TextStyle.body}>Good morning,</Text>
-            <Text style={TextStyle.heading}>Traveler</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={TextStyle.subheading}>Upcoming Trip</Text>
-            <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
-              <View style={styles.tripCard}>
-                <Image
-                  source={{ uri: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60' }}
-                  style={styles.tripImage}
-                />
-                <View style={styles.tripInfo}>
-                  <Text style={TextStyle.heading}>Paris, France</Text>
-                  <View style={styles.tripDates}>
-                    <FontAwesome name="calendar" size={16} color={Colors.primary} style={styles.dateIcon} />
-                    <Text style={TextStyle.highlighted}>June 15 - June 22, 2025</Text>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.tripItineraryPreview}>
-                    <FontAwesome name="map-marker" size={16} color={Colors.primary} style={styles.previewIcon} />
-                    <Text style={TextStyle.body}>3 activities planned</Text>
-                  </View>
-                </View>
-              </View>
-            </Animated.View>
-          </View>
-
+        imageStyle={{ opacity: 0.1 }}
+      >
+        <View style={styles.content}>
+          {/* Create Trip Button */}
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <Pressable
               style={styles.createTripButton}
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
-              onPress={() => console.log('Create Trip pressed')}>
-              <FontAwesome name="plus" size={18} color={Colors.white} style={styles.buttonIcon} />
+              onPress={() => console.log('Create Trip pressed')}
+            >
               <Text style={styles.buttonText}>Create Trip</Text>
             </Pressable>
           </Animated.View>
 
-          <View style={styles.section}>
-            <Text style={TextStyle.subheading}>Travel Tips</Text>
-            <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
-              <View style={styles.tipCard}>
-                <FontAwesome name="lightbulb-o" size={20} color={Colors.gold} style={styles.tipIcon} />
-                <Text style={TextStyle.body}>Remember to check the local weather before packing for your trip!</Text>
+          {/* Upcoming Trip Card */}
+          <Text style={[TextStyle.subheading, styles.sectionTitle]}>Upcoming Trip</Text>
+          <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
+            <View style={styles.tripCard}>
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60' }}
+                style={styles.tripImage}
+              />
+              <View style={styles.tripInfo}>
+                <Text style={TextStyle.heading}>Paris, France</Text>
+                <Text style={TextStyle.body}>June 5-10</Text>
+                <Text style={[TextStyle.subheading, styles.itineraryTitle]}>Itinerary</Text>
+                <View style={styles.itineraryPreview}>
+                  <View style={styles.itineraryItem}>
+                    <Feather name="clock" size={16} color={Colors.primary} style={styles.clockIcon} />
+                    <Text style={TextStyle.highlighted}>9:00</Text>
+                    <Text style={[TextStyle.body, styles.itineraryText]}>Breakfast</Text>
+                  </View>
+                  <View style={styles.divider} />
+                  <View style={styles.itineraryItem}>
+                    <Feather name="clock" size={16} color={Colors.primary} style={styles.clockIcon} />
+                    <Text style={TextStyle.highlighted}>11:00</Text>
+                    <Text style={[TextStyle.body, styles.itineraryText]}>Louvre Museum</Text>
+                  </View>
+                </View>
               </View>
-            </Animated.View>
-          </View>
-        </ScrollView>
+            </View>
+          </Animated.View>
+        </View>
       </ImageBackground>
     </SafeAreaView>
   );
@@ -106,14 +98,20 @@ const styles = StyleSheet.create({
   bgImage: {
     flex: 1,
   },
-  scrollContainer: {
-    padding: Spacing.lg,
+  content: {
+    flex: 1,
+    padding: Spacing.xl, // Increased padding for a spacious feel
   },
-  header: {
+  createTripButton: {
+    ...ButtonStyle.primary,
+    alignSelf: 'center',
     marginBottom: Spacing.xl,
   },
-  section: {
-    marginBottom: Spacing.xl,
+  buttonText: {
+    ...ButtonStyle.primaryText,
+  },
+  sectionTitle: {
+    marginBottom: Spacing.sm,
   },
   cardContainer: {
     marginTop: Spacing.sm,
@@ -130,49 +128,27 @@ const styles = StyleSheet.create({
   tripInfo: {
     padding: Spacing.md,
   },
-  tripDates: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.xs,
+  itineraryTitle: {
+    marginTop: Spacing.md,
     marginBottom: Spacing.sm,
   },
-  dateIcon: {
-    marginRight: Spacing.xs,
+  itineraryPreview: {
+    marginTop: Spacing.xs,
+  },
+  itineraryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.xs,
+  },
+  clockIcon: {
+    marginRight: Spacing.sm,
+  },
+  itineraryText: {
+    marginLeft: Spacing.sm,
   },
   divider: {
     height: 1,
     backgroundColor: Colors.accent,
     marginVertical: Spacing.sm,
-  },
-  tripItineraryPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.xs,
-  },
-  previewIcon: {
-    marginRight: Spacing.sm,
-  },
-  createTripButton: {
-    ...ButtonStyle.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginVertical: Spacing.xl,
-  },
-  buttonIcon: {
-    marginRight: Spacing.sm,
-  },
-  buttonText: {
-    ...ButtonStyle.primaryText,
-  },
-  tipCard: {
-    ...CardStyle.container,
-    padding: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tipIcon: {
-    marginRight: Spacing.md,
   },
 });

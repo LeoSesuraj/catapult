@@ -37,25 +37,18 @@ export default function TabLayout() {
         },
         headerTitleAlign: 'center',
       }}>
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="trips"
         options={{
           title: 'Trips',
           tabBarIcon: ({ color }) => <TabBarIcon name="suitcase" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="itinerary"
-        options={{
-          title: 'Itinerary',
-          tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} />,
         }}
       />
       <Tabs.Screen
