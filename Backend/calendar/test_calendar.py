@@ -2,7 +2,7 @@ from datetime import date, timedelta, datetime
 import json
 
 # Import the functions from your main file
-from catapult.calendar.calendar_code import get_calendar_service, get_calendar_events, list_all_calendars
+from catapult.Backend.calendar.calendar_code import get_calendar_service, get_calendar_events, list_all_calendars
 
 def get_todays_events(calendar_id=None, print_events=True):
     """
