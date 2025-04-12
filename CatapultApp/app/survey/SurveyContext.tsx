@@ -1,16 +1,14 @@
 import React, { createContext, useContext, useState } from 'react';
 
-type TripType = 'business' | 'personal' | null;
-type Budget = 'high' | 'low' | null;
-
-interface SurveyData {
-    tripType: TripType;
-    location: string | null;
-    duration: number | null;
-    budget: Budget;
-    budgetTier: 'budget' | 'comfort' | 'luxury';
-    startDate?: string | null; // Add startDate
-    endDate?: string | null;   // Add endDate
+export interface SurveyData {
+    tripType: string | null;
+    destination: string | null;
+    transportType: 'fly' | 'self' | null;
+    departure: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    budget: number | null;
+    budgetTier: string | null;
 }
 
 interface Trip {
@@ -21,56 +19,57 @@ interface Trip {
     status: 'upcoming' | 'past' | 'draft';
 }
 
-interface SurveyContextType {
+export interface SurveyContextType {
     surveyData: SurveyData;
-    updateSurveyData: (field: keyof SurveyData, value: any) => void;
+    updateSurveyData: <K extends keyof SurveyData>(key: K, value: SurveyData[K]) => void;
     resetSurvey: () => void;
     trips: Trip[];
     addTrip: (trip: Trip) => void;
 }
 
-const initialSurveyData: SurveyData = {
+const defaultSurveyData: SurveyData = {
     tripType: null,
-    location: null,
-    duration: null,
-    budget: null,
-    budgetTier: 'budget',
+    destination: null,
+    transportType: null,
+    departure: null,
     startDate: null,
     endDate: null,
+    budget: null,
+    budgetTier: null,
 };
 
 const initialTrips: Trip[] = [
     {
         id: '5',
-        destination: 'Chicago, USA',
+        destination: 'Chicago',
         image: 'https://images.unsplash.com/photo-1494522358652-f30e61a60313?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
         dates: 'April 20-25, 2025',
         status: 'upcoming',
     },
     {
         id: '1',
-        destination: 'Paris, France',
+        destination: 'Paris',
         image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
         dates: 'June 5-10, 2025',
         status: 'upcoming',
     },
     {
         id: '2',
-        destination: 'Tokyo, Japan',
+        destination: 'Tokyo',
         image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
         dates: 'August 12-22, 2025',
         status: 'upcoming',
     },
     {
         id: '3',
-        destination: 'Barcelona, Spain',
+        destination: 'Barcelona',
         image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
         dates: 'March 3-8, 2025',
         status: 'past',
     },
     {
         id: '4',
-        destination: 'New York, USA',
+        destination: 'New York City',
         image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
         dates: 'Planning in progress',
         status: 'draft',
@@ -80,7 +79,7 @@ const initialTrips: Trip[] = [
 const SurveyContext = createContext<SurveyContextType | undefined>(undefined);
 
 export function SurveyProvider({ children }: { children: React.ReactNode }) {
-    const [surveyData, setSurveyData] = useState<SurveyData>(initialSurveyData);
+    const [surveyData, setSurveyData] = useState<SurveyData>(defaultSurveyData);
     const [trips, setTrips] = useState<Trip[]>(initialTrips);
 
     const updateSurveyData = (field: keyof SurveyData, value: any) => {
@@ -91,7 +90,7 @@ export function SurveyProvider({ children }: { children: React.ReactNode }) {
     };
 
     const resetSurvey = () => {
-        setSurveyData(initialSurveyData);
+        setSurveyData(defaultSurveyData);
     };
 
     const addTrip = (trip: Trip) => {

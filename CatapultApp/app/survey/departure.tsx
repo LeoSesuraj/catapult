@@ -8,9 +8,9 @@ import { FontFamily, Spacing, BorderRadius, Shadow } from '../../constants/Theme
 import { useSurvey } from './SurveyContext';
 import { CITIES } from '../data/cities';
 
-export default function Location() {
+export default function Departure() {
     const router = useRouter();
-    const { updateSurveyData } = useSurvey();
+    const { updateSurveyData, surveyData } = useSurvey();
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredCities, setFilteredCities] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -18,7 +18,8 @@ export default function Location() {
     useEffect(() => {
         if (searchQuery.length > 0) {
             const filtered = CITIES.filter(city =>
-                city.toLowerCase().includes(searchQuery.toLowerCase())
+                city.toLowerCase().includes(searchQuery.toLowerCase()) &&
+                city.toLowerCase() !== surveyData.destination?.toLowerCase()
             );
             setFilteredCities(filtered);
             setShowSuggestions(true);
@@ -35,8 +36,8 @@ export default function Location() {
 
         // Automatically proceed after a brief delay
         setTimeout(() => {
-            updateSurveyData('destination', city);
-            router.push('/survey/transport');
+            updateSurveyData('departure', city);
+            router.push('/survey/calendar');
         }, 300);
     };
 
@@ -44,18 +45,12 @@ export default function Location() {
         router.back();
     };
 
-    const handleKeyPress = ({ nativeEvent }: { nativeEvent: { key: string } }) => {
-        if (nativeEvent.key === 'Enter' && filteredCities.length === 1) {
-            handleCitySelect(filteredCities[0]);
-        }
-    };
-
     const renderCityItem = ({ item }: { item: string }) => (
         <TouchableOpacity
             style={styles.suggestionItem}
             onPress={() => handleCitySelect(item)}
         >
-            <FontAwesome name="map-marker" size={16} color="#4299E1" style={styles.suggestionIcon} />
+            <FontAwesome name="plane" size={16} color="#4299E1" style={[styles.suggestionIcon, { transform: [{ rotate: '-45deg' }] }]} />
             <Text style={styles.suggestionText}>{item}</Text>
         </TouchableOpacity>
     );
@@ -77,8 +72,16 @@ export default function Location() {
                             <FontAwesome name="chevron-left" size={16} color="#FFFFFF" />
                         </TouchableOpacity>
 
-                        <Text style={styles.title}>Where would you like to go?</Text>
+                        <Text style={styles.title}>Where are you flying from?</Text>
                         <Text style={styles.subtitle}>Start typing to see suggestions</Text>
+
+                        <View style={styles.destinationCard}>
+                            <View style={styles.destinationHeader}>
+                                <FontAwesome name="map-marker" size={16} color="#4299E1" />
+                                <Text style={styles.destinationLabel}>Flying to</Text>
+                            </View>
+                            <Text style={styles.destinationText}>{surveyData.destination}</Text>
+                        </View>
 
                         <View style={styles.searchContainer}>
                             <View style={styles.inputContainer}>
@@ -90,7 +93,6 @@ export default function Location() {
                                     placeholder="Search for a city"
                                     placeholderTextColor="#718096"
                                     autoFocus
-                                    onKeyPress={handleKeyPress}
                                 />
                                 {searchQuery.length > 0 && (
                                     <TouchableOpacity
@@ -123,7 +125,7 @@ export default function Location() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F7FAFC',
+        backgroundColor: '#1a202c',
     },
     gradient: {
         flex: 1,
@@ -156,6 +158,29 @@ const styles = StyleSheet.create({
         color: '#A0AEC0',
         marginBottom: Spacing.xl,
     },
+    destinationCard: {
+        backgroundColor: 'rgba(66, 153, 225, 0.1)',
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        marginBottom: Spacing.lg,
+    },
+    destinationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: Spacing.xs,
+    },
+    destinationLabel: {
+        fontSize: 14,
+        fontFamily: FontFamily.montserratMedium,
+        color: '#4299E1',
+        marginLeft: Spacing.sm,
+    },
+    destinationText: {
+        fontSize: 18,
+        fontFamily: FontFamily.montserratSemiBold,
+        color: '#FFFFFF',
+        marginLeft: 28,
+    },
     searchContainer: {
         position: 'relative',
         zIndex: 1,
@@ -184,11 +209,8 @@ const styles = StyleSheet.create({
     suggestionsContainer: {
         backgroundColor: '#2d3748',
         borderRadius: BorderRadius.lg,
-        marginTop: 8,
+        marginTop: 4,
         maxHeight: 300,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
         ...Shadow.medium,
     },
     suggestionItem: {
@@ -196,8 +218,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: Spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     },
     suggestionIcon: {
         marginRight: Spacing.sm,
@@ -206,20 +227,5 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontFamily: FontFamily.montserratMedium,
-        letterSpacing: 0.3,
-    },
-    destinationCard: {
-        backgroundColor: '#BEE3F8',
-        borderRadius: 15,
-        padding: 20,
-        margin: 16,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
     },
 }); 
