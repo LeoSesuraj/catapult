@@ -23,8 +23,28 @@ type ItineraryActivity = {
     type: 'meal' | 'attraction' | 'transport' | 'accommodation' | 'free-time';
 };
 
+type TripData = {
+    id: string;
+    destination: string;
+    image: string;
+    dates: string;
+    status: string;
+    days: {
+        id: string;
+        date: string;
+        activities: {
+            id: string;
+            time: string;
+            title: string;
+            description: string;
+            location?: string;
+            type: 'meal' | 'attraction' | 'transport' | 'accommodation' | 'free-time';
+        }[];
+    }[];
+};
+
 // Sample data
-const TRIPS = {
+const TRIPS: { [key: string]: TripData } = {
     '1': {
         id: '1',
         destination: 'Paris, France',
@@ -149,6 +169,106 @@ const TRIPS = {
                 ]
             }
         ]
+    },
+    '5': {
+        id: '5',
+        destination: 'Chicago, USA',
+        image: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+        dates: 'July 15-20',
+        status: 'upcoming',
+        days: [
+            {
+                id: 'day1',
+                date: 'Saturday, July 15',
+                activities: [
+                    {
+                        id: 'a1',
+                        time: '09:00',
+                        title: 'Breakfast',
+                        description: 'Start your day with breakfast at Wildberry Pancakes',
+                        location: '130 E Randolph St, Chicago, IL 60601',
+                        type: 'meal'
+                    },
+                    {
+                        id: 'a2',
+                        time: '10:30',
+                        title: 'Millennium Park',
+                        description: 'Visit Cloud Gate (The Bean) and explore the park',
+                        location: '201 E Randolph St, Chicago, IL 60602',
+                        type: 'attraction'
+                    },
+                    {
+                        id: 'a3',
+                        time: '13:00',
+                        title: 'Deep Dish Pizza',
+                        description: 'Lunch at Lou Malnati\'s Pizzeria',
+                        location: '439 N Wells St, Chicago, IL 60654',
+                        type: 'meal'
+                    },
+                    {
+                        id: 'a4',
+                        time: '15:00',
+                        title: 'Art Institute',
+                        description: 'Explore one of the oldest and largest art museums in the US',
+                        location: '111 S Michigan Ave, Chicago, IL 60603',
+                        type: 'attraction'
+                    },
+                    {
+                        id: 'a5',
+                        time: '19:00',
+                        title: 'River Dinner Cruise',
+                        description: 'Evening dinner cruise on the Chicago River',
+                        location: 'Navy Pier, 600 E Grand Ave, Chicago, IL 60611',
+                        type: 'meal'
+                    }
+                ]
+            },
+            {
+                id: 'day2',
+                date: 'Sunday, July 16',
+                activities: [
+                    {
+                        id: 'b1',
+                        time: '09:30',
+                        title: 'Breakfast',
+                        description: 'Breakfast at Yolk - Marina City',
+                        type: 'meal'
+                    },
+                    {
+                        id: 'b2',
+                        time: '11:00',
+                        title: 'Willis Tower',
+                        description: 'Visit Skydeck Chicago at Willis Tower',
+                        location: '233 S Wacker Dr, Chicago, IL 60606',
+                        type: 'attraction'
+                    },
+                    {
+                        id: 'b3',
+                        time: '14:00',
+                        title: 'Navy Pier',
+                        description: 'Explore Navy Pier and enjoy lunch',
+                        location: '600 E Grand Ave, Chicago, IL 60611',
+                        type: 'attraction'
+                    },
+                    {
+                        id: 'b4',
+                        time: '17:00',
+                        title: 'Magnificent Mile',
+                        description: 'Shopping along Michigan Avenue',
+                        location: 'N Michigan Ave, Chicago, IL 60611',
+                        type: 'free-time'
+                    },
+                    {
+                        id: 'b5',
+                        time: '20:00',
+                        title: 'Jazz Club',
+                        description: 'Dinner and jazz at Andy\'s Jazz Club',
+                        location: '11 E Hubbard St, Chicago, IL 60611',
+                        type: 'meal'
+                    }
+                ]
+            }
+        ]
     }
 };
 
@@ -188,13 +308,13 @@ export default function ItineraryDetailScreen() {
     const getActivityIcon = (type: string) => {
         switch (type) {
             case 'meal':
-                return 'utensils';
+                return 'cutlery';
             case 'attraction':
                 return 'map-marker';
             case 'transport':
                 return 'car';
             case 'accommodation':
-                return 'bed';
+                return 'home';
             case 'free-time':
                 return 'coffee';
             default:
