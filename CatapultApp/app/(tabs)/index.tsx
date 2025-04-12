@@ -69,8 +69,7 @@ export default function TripsScreen() {
 
   const handleCreateTrip = () => {
     console.log('Create new trip');
-    // Navigate to trip creation page
-    // router.push('/create-trip');
+    router.push('/survey/index');
   };
 
   const renderTripCard = ({ item }: { item: Trip }) => {
