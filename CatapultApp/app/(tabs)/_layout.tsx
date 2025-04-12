@@ -98,7 +98,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     >
       <BlurView intensity={30} tint="dark" style={styles.blurView}>
         <LinearGradient
-          colors={['rgba(15, 23, 42, 0.7)', 'rgba(30, 41, 59, 0.85)']}
+          colors={['rgba(26, 32, 44, 0.9)', 'rgba(45, 55, 72, 0.95)']}
           style={styles.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -140,7 +140,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               >
                 <AnimatedTabBarIcon 
                   name={iconName} 
-                  color={isFocused ? '#3B82F6' : '#94A3B8'} 
+                  color={isFocused ? '#E2E8F0' : '#94A3B8'} 
                   isFocused={isFocused} 
                 />
                 
@@ -148,7 +148,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                   style={[
                     styles.tabLabel,
                     { 
-                      color: isFocused ? '#3B82F6' : '#94A3B8',
+                      color: isFocused ? '#E2E8F0' : '#94A3B8',
                       opacity: isFocused ? 1 : 0.7,
                     }
                   ]}
@@ -170,7 +170,7 @@ export default function TabLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#0F172A',
+          backgroundColor: '#1A202C',
         },
         headerTitleStyle: {
           fontFamily: FontFamily.montserratSemiBold,
@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     height: 60, // Reduced height
     ...Shadow.medium,
-    shadowColor: '#3B82F6',
-    shadowOpacity: 0.3,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
     elevation: 8,
   },
   blurView: {
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     left: '10%',
     width: '80%',
     height: 2,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#A0AEC0',
     borderRadius: 2,
   },
   tabItem: {
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   tabItemFocused: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   tabLabel: {
     fontFamily: FontFamily.montserratMedium,

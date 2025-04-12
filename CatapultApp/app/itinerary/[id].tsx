@@ -1,13 +1,61 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, FlatList } from 'react-native';
+import { Animated, StyleSheet, Text, View, Image, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Feather from '@expo/vector-icons/Feather';
-import Colors from '@/constants/Colors';
-import { BorderRadius, FontFamily, FontSizes, Shadow, Spacing, TextStyle, CardStyle } from '@/constants/Theme';
-import ChatButton from '@/components/ChatButton';
 
+// Constants that can be easily imported/generated
+const THEME = {
+    // Main colors
+    BACKGROUND_GRADIENT_START: '#1a202c',
+    BACKGROUND_GRADIENT_END: '#2d3748',
+    TEXT_PRIMARY: '#E2E8F0',
+    TEXT_SECONDARY: '#A0AEC0',
+    TEXT_TERTIARY: '#718096',
+    
+    // UI element colors
+    CARD_BACKGROUND: '#2d3748',
+    CARD_BORDER: 'rgba(255, 255, 255, 0.1)',
+    
+    // Tab colors
+    TAB_INACTIVE: '#4A5568',
+    TAB_ACTIVE: '#A0AEC0',
+    
+    // Activity type colors
+    ACTIVITY_MEAL: '#C1E1C1',          // Light green
+    ACTIVITY_ATTRACTION: '#FFD1DC',     // Light pink
+    ACTIVITY_TRANSPORT: '#B3D4FF',      // Light blue
+    ACTIVITY_ACCOMMODATION: '#F0E68C',  // Light yellow
+    ACTIVITY_FREE_TIME: '#D8BFD8'       // Light purple
+};
+
+// Activity type mapping for icons and colors (easily updatable)
+const ACTIVITY_TYPE_CONFIG = {
+    'meal': {
+        icon: 'cutlery',
+        color: THEME.ACTIVITY_MEAL
+    },
+    'attraction': {
+        icon: 'map-marker',
+        color: THEME.ACTIVITY_ATTRACTION
+    },
+    'transport': {
+        icon: 'car',
+        color: THEME.ACTIVITY_TRANSPORT
+    },
+    'accommodation': {
+        icon: 'home',
+        color: THEME.ACTIVITY_ACCOMMODATION
+    },
+    'free-time': {
+        icon: 'coffee',
+        color: THEME.ACTIVITY_FREE_TIME
+    }
+};
+
+// Types that can be easily generated
 type ItineraryDay = {
     id: string;
     date: string;
@@ -29,21 +77,10 @@ type TripData = {
     image: string;
     dates: string;
     status: string;
-    days: {
-        id: string;
-        date: string;
-        activities: {
-            id: string;
-            time: string;
-            title: string;
-            description: string;
-            location?: string;
-            type: 'meal' | 'attraction' | 'transport' | 'accommodation' | 'free-time';
-        }[];
-    }[];
+    days: ItineraryDay[];
 };
 
-// Sample data
+// Sample data - this could be imported or generated
 const TRIPS: { [key: string]: TripData } = {
     '1': {
         id: '1',
@@ -272,56 +309,64 @@ const TRIPS: { [key: string]: TripData } = {
     }
 };
 
+// Main component - structured for easier generation
 export default function ItineraryDetailScreen() {
+    // State variables
     const { id } = useLocalSearchParams();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const [activeDay, setActiveDay] = useState<string | null>(null);
-    const [trip, setTrip] = useState<any>(null);
+    const [trip, setTrip] = useState<TripData | null>(null);
 
+    // Effects
     useEffect(() => {
+        // Fade in animation
         Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 800,
             useNativeDriver: true,
         }).start();
 
+        // Get trip data
         if (id && typeof id === 'string') {
-            // Get trip data based on ID
             const tripData = TRIPS[id];
             setTrip(tripData);
+            
+            // Set first day as active
             if (tripData && tripData.days.length > 0) {
                 setActiveDay(tripData.days[0].id);
             }
         }
     }, [id]);
 
+    // Loading state
     if (!trip) {
         return (
-            <SafeAreaView style={styles.container}>
-                <Text style={TextStyle.body}>Loading...</Text>
-            </SafeAreaView>
+            <View style={styles.container}>
+                <LinearGradient
+                    colors={[THEME.BACKGROUND_GRADIENT_START, THEME.BACKGROUND_GRADIENT_END]}
+                    style={styles.gradient}
+                >
+                    <SafeAreaView style={styles.safeArea}>
+                        <Text style={styles.loadingText}>Loading...</Text>
+                    </SafeAreaView>
+                </LinearGradient>
+            </View>
         );
     }
 
-    const activeDayData = trip.days.find((day: ItineraryDay) => day.id === activeDay);
+    // Get active day data
+    const activeDayData = trip.days.find((day) => day.id === activeDay);
 
+    // Helper functions
     const getActivityIcon = (type: string) => {
-        switch (type) {
-            case 'meal':
-                return 'cutlery';
-            case 'attraction':
-                return 'map-marker';
-            case 'transport':
-                return 'car';
-            case 'accommodation':
-                return 'home';
-            case 'free-time':
-                return 'coffee';
-            default:
-                return 'circle';
-        }
+        return ACTIVITY_TYPE_CONFIG[type as keyof typeof ACTIVITY_TYPE_CONFIG]?.icon || 'circle';
     };
 
+    const getActivityColor = (type: string) => {
+        return ACTIVITY_TYPE_CONFIG[type as keyof typeof ACTIVITY_TYPE_CONFIG]?.color || THEME.TEXT_PRIMARY;
+    };
+
+    // Render functions
     const renderDay = ({ item }: { item: ItineraryDay }) => (
         <TouchableOpacity
             style={[
@@ -329,6 +374,7 @@ export default function ItineraryDetailScreen() {
                 activeDay === item.id && styles.activeDayTab
             ]}
             onPress={() => setActiveDay(item.id)}
+            activeOpacity={0.8}
         >
             <Text
                 style={[
@@ -344,17 +390,22 @@ export default function ItineraryDetailScreen() {
     const renderActivity = ({ item }: { item: ItineraryActivity }) => (
         <View style={styles.activityCard}>
             <View style={styles.activityTime}>
-                <Text style={TextStyle.highlighted}>{item.time}</Text>
+                <Text style={styles.timeText}>{item.time}</Text>
             </View>
             <View style={styles.activityContent}>
                 <View style={styles.activityHeader}>
-                    <FontAwesome name={getActivityIcon(item.type)} size={16} color={Colors.primary} style={styles.activityIcon} />
-                    <Text style={TextStyle.subheading}>{item.title}</Text>
+                    <FontAwesome 
+                        name={getActivityIcon(item.type)} 
+                        size={16} 
+                        color={getActivityColor(item.type)} 
+                        style={styles.activityIcon} 
+                    />
+                    <Text style={styles.activityTitle}>{item.title}</Text>
                 </View>
-                <Text style={TextStyle.body}>{item.description}</Text>
+                <Text style={styles.activityDescription}>{item.description}</Text>
                 {item.location && (
                     <View style={styles.locationContainer}>
-                        <Feather name="map-pin" size={14} color={Colors.accent} style={styles.locationIcon} />
+                        <Feather name="map-pin" size={14} color={THEME.TEXT_SECONDARY} style={styles.locationIcon} />
                         <Text style={styles.locationText}>{item.location}</Text>
                     </View>
                 )}
@@ -362,156 +413,260 @@ export default function ItineraryDetailScreen() {
         </View>
     );
 
+    // Main render
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'right', 'left']}>
-            <Stack.Screen
-                options={{
-                    title: trip.destination,
-                    headerLeft: () => (
-                        <TouchableOpacity
-                            onPress={() => router.back()}
-                            style={styles.backButton}
-                        >
-                            <FontAwesome name="chevron-left" size={16} color={Colors.darkGray} />
-                        </TouchableOpacity>
-                    )
-                }}
-            />
-
-            <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-                <Image source={{ uri: trip.image }} style={styles.headerImage} />
-                <View style={styles.tripMeta}>
-                    <Text style={TextStyle.heading}>{trip.destination}</Text>
-                    <Text style={TextStyle.body}>{trip.dates}</Text>
-                </View>
-            </Animated.View>
-
-            <View style={styles.daysContainer}>
-                <FlatList
-                    data={trip.days}
-                    renderItem={renderDay}
-                    keyExtractor={(item) => item.id}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.daysList}
-                />
-            </View>
-
-            {activeDayData && (
-                <Animated.View style={[styles.activitiesContainer, { opacity: fadeAnim }]}>
-                    <Text style={styles.dayTitle}>{activeDayData.date}</Text>
-                    <FlatList
-                        data={activeDayData.activities}
-                        renderItem={renderActivity}
-                        keyExtractor={(item) => item.id}
-                        contentContainerStyle={styles.activitiesList}
-                        showsVerticalScrollIndicator={false}
+        <View style={styles.container}>
+            <LinearGradient
+                colors={[THEME.BACKGROUND_GRADIENT_START, THEME.BACKGROUND_GRADIENT_END]}
+                style={styles.gradient}
+            >
+                <SafeAreaView style={styles.safeArea}>
+                    <Stack.Screen
+                        options={{
+                            title: trip.destination,
+                            headerShown: true,
+                            headerTransparent: true,
+                            headerTintColor: THEME.TEXT_PRIMARY,
+                            headerTitleStyle: styles.headerTitle,
+                            headerLeft: () => (
+                                <TouchableOpacity
+                                    onPress={() => router.back()}
+                                    style={styles.backButton}
+                                >
+                                    <FontAwesome name="chevron-left" size={16} color={THEME.TEXT_PRIMARY} />
+                                </TouchableOpacity>
+                            )
+                        }}
                     />
-                </Animated.View>
-            )}
 
-            <ChatButton />
-        </SafeAreaView>
+                    <View style={styles.content}>
+                        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+                            <Image source={{ uri: trip.image }} style={styles.headerImage} />
+                            <LinearGradient
+                                colors={['transparent', 'rgba(0,0,0,0.7)']}
+                                style={styles.imageOverlay}
+                            />
+                            <View style={styles.tripMeta}>
+                                <Text style={styles.destinationText}>{trip.destination}</Text>
+                                <Text style={styles.datesText}>{trip.dates}</Text>
+                            </View>
+                        </Animated.View>
+
+                        <View style={styles.daysContainer}>
+                            <FlatList
+                                data={trip.days}
+                                renderItem={renderDay}
+                                keyExtractor={(item) => item.id}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.daysList}
+                            />
+                        </View>
+
+                        {activeDayData && (
+                            <Animated.View style={[styles.activitiesContainer, { opacity: fadeAnim }]}>
+                                <Text style={styles.dayTitle}>{activeDayData.date}</Text>
+                                <FlatList
+                                    data={activeDayData.activities}
+                                    renderItem={renderActivity}
+                                    keyExtractor={(item) => item.id}
+                                    contentContainerStyle={styles.activitiesList}
+                                    showsVerticalScrollIndicator={false}
+                                />
+                            </Animated.View>
+                        )}
+                    </View>
+                </SafeAreaView>
+            </LinearGradient>
+        </View>
     );
 }
 
+// Styles - organized for easier generation and modification
 const styles = StyleSheet.create({
+    // Main container styles
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: THEME.BACKGROUND_GRADIENT_START,
     },
+    gradient: {
+        flex: 1,
+    },
+    safeArea: {
+        flex: 1,
+    },
+    content: {
+        flex: 1,
+        paddingTop: 60, // Account for the header
+    },
+    loadingText: {
+        fontSize: 16,
+        color: THEME.TEXT_PRIMARY,
+        textAlign: 'center',
+        marginTop: 50,
+    },
+    
+    // Header styles
     backButton: {
         padding: 8,
     },
+    headerTitle: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 18,
+        color: THEME.TEXT_PRIMARY,
+    },
     header: {
-        marginHorizontal: Spacing.lg,
-        marginVertical: Spacing.md,
-        ...CardStyle.container,
+        marginHorizontal: 20,
+        marginTop: 10,
+        marginBottom: 15,
+        borderRadius: 15,
         overflow: 'hidden',
+        height: 150,
     },
     headerImage: {
         width: '100%',
-        height: 120,
+        height: '100%',
         resizeMode: 'cover',
     },
-    tripMeta: {
-        padding: Spacing.md,
+    imageOverlay: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: '70%',
     },
+    tripMeta: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 15,
+    },
+    destinationText: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 22,
+        color: THEME.TEXT_PRIMARY,
+        marginBottom: 4,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+    datesText: {
+        fontFamily: 'Montserrat_500Medium',
+        fontSize: 14,
+        color: THEME.TEXT_PRIMARY,
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    
+    // Days tabs styles
     daysContainer: {
-        marginTop: Spacing.sm,
+        marginTop: 5,
     },
     daysList: {
-        paddingHorizontal: Spacing.lg,
+        paddingHorizontal: 20,
     },
     dayTab: {
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        marginRight: Spacing.sm,
-        borderRadius: BorderRadius.md,
-        backgroundColor: Colors.offWhite,
-        ...Shadow.subtle,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        marginRight: 8,
+        borderRadius: 8,
+        backgroundColor: THEME.TAB_INACTIVE,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     activeDayTab: {
-        backgroundColor: Colors.primary,
+        backgroundColor: THEME.TAB_ACTIVE,
     },
     dayTabText: {
-        fontFamily: FontFamily.montserratMedium,
-        fontSize: FontSizes.sm,
-        color: Colors.darkGray,
+        fontFamily: 'Montserrat_500Medium',
+        fontSize: 14,
+        color: THEME.TEXT_PRIMARY,
+        opacity: 0.7,
     },
     activeDayTabText: {
-        color: Colors.white,
+        color: THEME.TEXT_PRIMARY,
+        opacity: 1,
     },
     dayTitle: {
-        ...TextStyle.subheading,
-        marginBottom: Spacing.md,
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 18,
+        color: THEME.TEXT_PRIMARY,
+        marginBottom: 16,
     },
+    
+    // Activities styles
     activitiesContainer: {
         flex: 1,
-        marginTop: Spacing.md,
-        paddingHorizontal: Spacing.lg,
+        marginTop: 15,
+        paddingHorizontal: 20,
     },
     activitiesList: {
-        paddingBottom: Spacing.xl,
+        paddingBottom: 30,
     },
     activityCard: {
-        ...CardStyle.container,
+        backgroundColor: THEME.CARD_BACKGROUND,
+        borderRadius: 12,
         flexDirection: 'row',
-        marginBottom: Spacing.md,
+        marginBottom: 12,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: THEME.CARD_BORDER,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     activityTime: {
         width: 60,
-        padding: Spacing.sm,
+        padding: 8,
         alignItems: 'center',
         justifyContent: 'flex-start',
         borderRightWidth: 1,
-        borderRightColor: Colors.accent,
-        paddingTop: Spacing.md,
+        borderRightColor: 'rgba(255, 255, 255, 0.1)',
+        paddingTop: 16,
+    },
+    timeText: {
+        fontFamily: 'Montserrat_500Medium',
+        fontSize: 14,
+        color: THEME.TEXT_SECONDARY,
     },
     activityContent: {
         flex: 1,
-        padding: Spacing.md,
+        padding: 16,
     },
     activityHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: Spacing.xs,
+        marginBottom: 6,
     },
     activityIcon: {
-        marginRight: Spacing.sm,
+        marginRight: 8,
+    },
+    activityTitle: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 16,
+        color: THEME.TEXT_PRIMARY,
+    },
+    activityDescription: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 14,
+        color: THEME.TEXT_SECONDARY,
+        lineHeight: 20,
     },
     locationContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: Spacing.sm,
+        marginTop: 10,
     },
     locationIcon: {
-        marginRight: Spacing.xs,
+        marginRight: 4,
     },
     locationText: {
         fontSize: 12,
-        color: Colors.accent,
-        fontFamily: FontFamily.montserratRegular,
+        color: THEME.TEXT_TERTIARY,
+        fontFamily: 'Montserrat_400Regular',
     },
-}); 
+});
