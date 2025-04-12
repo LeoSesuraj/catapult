@@ -1,4 +1,3 @@
-// /CatapultApp/app/survey/SurveyContext.tsx
 import React, { createContext, useContext, useState } from 'react';
 
 type TripType = 'business' | 'personal' | null;
@@ -9,6 +8,8 @@ interface SurveyData {
     location: string | null;
     duration: number | null;
     budget: Budget;
+    startDate?: string | null; // Add startDate
+    endDate?: string | null;   // Add endDate
 }
 
 interface Trip {
@@ -32,6 +33,8 @@ const initialSurveyData: SurveyData = {
     location: null,
     duration: null,
     budget: null,
+    startDate: null,
+    endDate: null,
 };
 
 const initialTrips: Trip[] = [
