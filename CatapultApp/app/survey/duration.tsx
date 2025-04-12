@@ -1,18 +1,50 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSurvey } from './SurveyContext';
 import Colors from '../../constants/Colors';
+import moment from 'moment';
 
 export default function Duration() {
     const router = useRouter();
     const { updateSurveyData } = useSurvey();
-    const [duration, setDuration] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [duration, setDuration] = useState<number | null>(null);
+
+    const calculateDuration = (start: string, end: string) => {
+        if (start && end) {
+            const startMoment = moment(start, 'YYYY-MM-DD');
+            const endMoment = moment(end, 'YYYY-MM-DD');
+
+            if (startMoment.isValid() && endMoment.isValid()) {
+                const days = endMoment.diff(startMoment, 'days') + 1;
+                if (days > 0) {
+                    setDuration(days);
+                    return days;
+                }
+            }
+        }
+        setDuration(null);
+        return null;
+    };
+
+    const handleStartDateChange = (text: string) => {
+        setStartDate(text);
+        calculateDuration(text, endDate);
+    };
+
+    const handleEndDateChange = (text: string) => {
+        setEndDate(text);
+        calculateDuration(startDate, text);
+    };
 
     const handleNext = () => {
-        const durationNum = parseInt(duration);
-        if (durationNum > 0) {
-            updateSurveyData('duration', durationNum);
+        const days = calculateDuration(startDate, endDate);
+        if (days) {
+            updateSurveyData('duration', days);
+            updateSurveyData('startDate', startDate);
+            updateSurveyData('endDate', endDate);
             router.push('/survey/budget');
         }
     };
@@ -21,28 +53,46 @@ export default function Duration() {
         router.back();
     };
 
-    const handleDurationChange = (text: string) => {
-        // Only allow positive numbers
-        if (/^\d*$/.test(text)) {
-            setDuration(text);
-        }
-    };
-
-    const isValid = duration !== '' && parseInt(duration) > 0;
+    const isValid = duration !== null && duration > 0;
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>How long is your trip?</Text>
-            <Text style={styles.subtitle}>Enter the number of days</Text>
+            <Text style={styles.title}>When is your trip?</Text>
+            <Text style={styles.subtitle}>Enter your travel dates (YYYY-MM-DD)</Text>
 
-            <TextInput
-                style={styles.input}
-                placeholder="Number of days"
-                value={duration}
-                onChangeText={handleDurationChange}
-                keyboardType="number-pad"
-                autoFocus
-            />
+            <View style={styles.inputContainer}>
+                <Text style={styles.label}>Start Date:</Text>
+                <TextInput
+                    style={styles.input}
+                    value={startDate}
+                    onChangeText={handleStartDateChange}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#999"
+                />
+            </View>
+
+            <View style={styles.inputContainer}>
+                <Text style={styles.label}>End Date:</Text>
+                <TextInput
+                    style={styles.input}
+                    value={endDate}
+                    onChangeText={handleEndDateChange}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#999"
+                />
+            </View>
+
+            {duration !== null && duration > 0 && (
+                <Text style={styles.durationText}>
+                    Trip duration: {duration} days
+                </Text>
+            )}
+
+            {duration !== null && duration <= 0 && (
+                <Text style={styles.errorText}>
+                    End date must be after start date
+                </Text>
+            )}
 
             <TouchableOpacity
                 style={[styles.nextButton, !isValid && styles.disabledButton]}
@@ -68,13 +118,13 @@ const styles = StyleSheet.create({
         padding: 20,
         backgroundColor: '#fff',
         alignItems: 'center',
-        justifyContent: 'center',
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 10,
         textAlign: 'center',
+        marginTop: 40,
     },
     subtitle: {
         fontSize: 16,
@@ -82,14 +132,33 @@ const styles = StyleSheet.create({
         marginBottom: 30,
         textAlign: 'center',
     },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 20,
+    },
+    label: {
+        fontSize: 16,
+        marginBottom: 8,
+        color: '#333',
+    },
     input: {
-        width: '80%',
+        width: '100%',
         height: 50,
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: '#ddd',
         borderRadius: 8,
-        padding: 15,
+        padding: 10,
         fontSize: 16,
+    },
+    durationText: {
+        fontSize: 18,
+        color: Colors.light.tint,
+        marginBottom: 30,
+        fontWeight: '500',
+    },
+    errorText: {
+        fontSize: 16,
+        color: 'red',
         marginBottom: 30,
     },
     nextButton: {

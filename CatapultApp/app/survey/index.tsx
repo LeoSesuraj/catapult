@@ -23,6 +23,10 @@ export default function CalendarConnect() {
         router.push('/survey/type');
     };
 
+    const handleBack = () => {
+        router.back();
+    };
+
     return (
         <View style={styles.container}>
             <LinearGradient
@@ -32,6 +36,13 @@ export default function CalendarConnect() {
                 end={{ x: 1, y: 1 }}
             >
                 <SafeAreaView style={styles.safeArea}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={handleBack}
+                    >
+                        <FontAwesome name="chevron-left" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+
                     <View style={styles.content}>
                         <View style={styles.iconContainer}>
                             <FontAwesome name="calendar" size={60} color="#FFFFFF" />
@@ -77,11 +88,20 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
     },
-    content: {
-        flex: 1,
-        padding: Spacing.lg,
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
+        margin: Spacing.lg,
+    },
+    content: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: Spacing.lg,
     },
     iconContainer: {
         width: 120,
