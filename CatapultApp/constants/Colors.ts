@@ -3,16 +3,36 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-const tintColorLight = '#0a7ea4';
+/**
+ * Colors for the Minimalist Wanderlust style
+ */
+
+const tintColorLight = '#B3D4FF';
 const tintColorDark = '#fff';
 
 export const Colors = {
+  primary: '#B3D4FF', // Light blue
+  secondary: '#FFD1DC', // Blush pink
+  accent: '#C1E1C1', // Mint green
+  gold: '#E6C200', // Subtle gold
+  white: '#FFFFFF', // White background
+  offWhite: '#F8F8F8', // Off-white for cards
+  black: '#000000',
+  lightGray: '#F5F5F5',
+  gray: '#CCCCCC',
+  mediumGray: '#666666', // Medium gray text
+  darkGray: '#333333', // Dark gray text
+  text: '#333333',
+  background: '#FFFFFF',
+  error: '#FF6B6B',
+  success: '#4BB543',
+  warning: '#FFD700',
   light: {
-    text: '#11181C',
+    text: '#333333',
     background: '#fff',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#333333',
+    tabIconDefault: '#666666',
     tabIconSelected: tintColorLight,
   },
   dark: {
@@ -24,3 +44,5 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
 };
+
+export default Colors;
