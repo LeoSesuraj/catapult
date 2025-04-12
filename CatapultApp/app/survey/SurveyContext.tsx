@@ -8,6 +8,7 @@ interface SurveyData {
     location: string | null;
     duration: number | null;
     budget: Budget;
+    budgetTier: 'budget' | 'comfort' | 'luxury';
     startDate?: string | null; // Add startDate
     endDate?: string | null;   // Add endDate
 }
@@ -33,6 +34,7 @@ const initialSurveyData: SurveyData = {
     location: null,
     duration: null,
     budget: null,
+    budgetTier: 'budget',
     startDate: null,
     endDate: null,
 };
