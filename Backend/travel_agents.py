@@ -10,12 +10,64 @@ from hotel import hotels
 from amadeus import Client, ResponseError
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 import re
+import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+
+class ItineraryState:
+    def __init__(self):
+        self._state = {
+            "dates": {"start": None, "end": None},
+            "destination": None,
+            "flight": None,
+            "hotel": None,
+            "total_cost": 0.0,
+            "status": "initial",
+            "calendar_events": []  # Add calendar events to state
+        }
+
+    def get_state(self) -> Dict:
+        """Get a read-only copy of the state"""
+        return self._state.copy()
+
+    def update_state(self, agent_name: str, updates: Dict) -> bool:
+        """Update the state. All agents can modify it, but only TravelAssistant can set status to 'complete'"""
+        try:
+            # Deep update the state
+            for key, value in updates.items():
+                if key == "status" and value == "complete" and agent_name != "TravelAssistant":
+                    logger.warning(f"Agent {agent_name} attempted to set status to 'complete'. Only TravelAssistant can do this.")
+                    continue
+                    
+                if isinstance(value, dict) and key in self._state and isinstance(self._state[key], dict):
+                    self._state[key].update(value)
+                else:
+                    self._state[key] = value
+            
+            # Calculate total cost if we have both flight and hotel
+            if self._state.get("flight") and self._state.get("hotel"):
+                flight_price = float(self._state["flight"].get("price", 0))
+                hotel_price = float(self._state["hotel"].get("price", 0))
+                start_date = datetime.strptime(self._state["dates"]["start"], "%Y-%m-%d")
+                end_date = datetime.strptime(self._state["dates"]["end"], "%Y-%m-%d")
+                nights = (end_date - start_date).days
+                self._state["total_cost"] = flight_price + (hotel_price * nights)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error updating state: {e}")
+            return False
+
+    def get_status(self) -> str:
+        return self._state.get("status", "initial")
+
+    def add_calendar_events(self, events: List[Dict]) -> None:
+        """Add calendar events to the state"""
+        self._state["calendar_events"] = events
 
 # --- Google Calendar Tools --- #
 @function_tool
@@ -45,6 +97,11 @@ def get_calendar_events_tool(
         events_data = calendar_code.get_calendar_events(start_date, end_date, calendar_id)
         if isinstance(events_data, dict) and "error" in events_data:
             return {"status": "error", "error": events_data["error"]}
+        
+        # Store events in the state
+        if isinstance(events_data, list):
+            itinerary_state.add_calendar_events(events_data)
+            
         return {"status": "success", "data": events_data}
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -93,10 +150,18 @@ def search_hotels(destination: str) -> Dict[str, Union[List[Dict], str]]:
     Find available hotels using Amadeus API.
     """
     try:
+        # Clean up destination name for better search results
+        destination = destination.strip()
+        if destination.lower() in ["nyc", "new york", "new york city"]:
+            destination = "NYC"
+        elif destination.lower() in ["jfk", "jfk airport"]:
+            destination = "NYC"  # Search in the city instead of airport
+            
         print(f"🏨 Searching hotels in {destination}")
         hotel = hotels.get_hotel(destination)
         if not hotel:
             return {"status": "error", "error": "No hotels found in this location", "hotels": []}
+            
         offers = hotels.get_hotel_offers(hotel["hotelId"])
         if not offers:
             return {"status": "error", "error": "No available rooms found", "hotels": []}
@@ -104,13 +169,23 @@ def search_hotels(destination: str) -> Dict[str, Union[List[Dict], str]]:
         best_offer = offers[0]['offers'][0]
         price = float(best_offer['price']['total'])
         
+        # Build a proper address string
+        address_parts = []
+        if hotel.get('address', {}).get('line1'):
+            address_parts.append(hotel['address']['line1'])
+        if hotel.get('address', {}).get('city'):
+            address_parts.append(hotel['address']['city'])
+        if hotel.get('address', {}).get('country'):
+            address_parts.append(hotel['address']['country'])
+        address = ', '.join(address_parts) if address_parts else "Address not available"
+        
         return {
             "status": "success",
             "hotels": [{
                 "name": hotel.get('name', 'Unknown Hotel'),
                 "price": price,
                 "rating": hotel.get('rating', 0),
-                "address": ', '.join(filter(None, [hotel.get('address', {}).get('line1'), hotel.get('address', {}).get('city'), hotel.get('address', {}).get('country')])),
+                "address": address,
                 "available": True
             }]
         }
@@ -126,6 +201,9 @@ def trip_planner(request: str):
     """
     Smart travel assistant that coordinates calendar availability checks, flight searches, and hotel bookings.
     """
+    # Initialize shared state
+    itinerary_state = ItineraryState()
+
     calendar_agent = Agent(
         name="Calendar agent",
         instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
@@ -158,7 +236,7 @@ def trip_planner(request: str):
         You are a flight booking specialist. Your job is to find optimal flights.
 
         Steps:
-        1. Extract the available dates, destination, from the Calendar agent's message.
+        1. Extract the available dates and destination from the Calendar agent's message.
         2. Use search_flights to find flights within the dates to the destination.
         3. If no flights are found or more calendar info is needed, hand off to the Calendar agent.
         4. On success, ALWAYS hand off to the Hotels agent using EXACTLY this format:
@@ -173,18 +251,24 @@ def trip_planner(request: str):
     hotels_agent = Agent(
         name="Hotels agent",
         instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
-        CONTINUE UNTIL YOU FIND A HOTEL. FIND ANY HOTEL.
+        CONTINUE UNTIL YOU FIND A HOTEL. DO NOT SEARCH FOR FLIGHTS.
 
-        You are a hotel booking specialist DO NOT BOOK FLIGHT. PLEASE. Your job is to find optimal accommodations.
+        You are a hotel booking specialist. Your ONLY job is to find hotel accommodations.
 
         Steps:
-        1. Extract the available dates, flight details, destination, from the Flights agent's message.
+        1. Extract the destination and dates from the Flights agent's message.
         2. Use search_hotels to find hotels in the destination.
-        3. If no hotels are found or more flight info is needed, hand off to the Flights agent.
+        3. If no hotels are found, try searching again with different parameters.
         4. On success, ALWAYS hand off to the TravelAssistant using EXACTLY this format:
-           "<handoff to='TravelAssistant'>Available dates: [START_DATE] to [END_DATE], Best flight: [AIRLINE] [FLIGHT_NUMBER], Dep: [DEPARTURE_TIME], Arr: [ARRIVAL_TIME], $[FLIGHT_PRICE], Best hotel: [HOTEL_NAME], $[HOTEL_PRICE]/night, [HOTEL_ADDRESS], Destination: [DESTINATION]. Here’s the complete plan.</handoff>"
+           "<handoff to='TravelAssistant'>Available dates: [START_DATE] to [END_DATE], Best flight: [AIRLINE] [FLIGHT_NUMBER], Dep: [DEPARTURE_TIME], Arr: [ARRIVAL_TIME], $[FLIGHT_PRICE], Best hotel: [HOTEL_NAME], $[HOTEL_PRICE]/night, [HOTEL_ADDRESS], Destination: [DESTINATION]. Here's the complete plan.</handoff>"
 
-        Example handoff: "<handoff to='TravelAssistant'>Available dates: 2025-04-19 to 2025-04-20, Best flight: Test Airline TA123, Dep: 2025-04-19T10:00, Arr: 2025-04-19T12:00, $199.99, Best hotel: Unknown Hotel, $150/night, Chicago, IL, USA, Destination: Chicago. Here’s the complete plan.</handoff>"
+        Example handoff: "<handoff to='TravelAssistant'>Available dates: 2025-04-19 to 2025-04-20, Best flight: Test Airline TA123, Dep: 2025-04-19T10:00, Arr: 2025-04-19T12:00, $199.99, Best hotel: Unknown Hotel, $150/night, Chicago, IL, USA, Destination: Chicago. Here's the complete plan.</handoff>"
+
+        IMPORTANT:
+        - DO NOT search for flights
+        - DO NOT ask for flight information
+        - ONLY search for hotels
+        - ALWAYS use the exact handoff format above
         """,
         tools=[search_hotels],
     )
@@ -201,25 +285,32 @@ def trip_planner(request: str):
         Process:
         1. Start by IMMEDIATELY handing off to the Calendar agent using EXACTLY this format:
            "<handoff to='Calendar agent'>Please check calendar availability for: {request}</handoff>"
-        2. When you receive a handoff from the Hotels agent, extract the details and present a formatted travel plan:
-           - Available dates
-           - Flight details
-           - Hotel details
-           - Total estimated cost (flight price + hotel price * number of nights)
-        3. Do not hand off again after receiving the Hotels agent's details.
+        2. When you receive a handoff from the Hotels agent, extract the details and update the itinerary state:
+           - Update dates
+           - Update flight details
+           - Update hotel details
+           - Calculate total cost (flight price + hotel price * number of nights)
+        3. Format and return the final plan.
 
         Format the final plan like:
-        "Here’s your travel plan:
+        "Here's your travel plan:
         - Dates: [START_DATE] to [END_DATE]
         - Flight: [AIRLINE] [FLIGHT_NUMBER], Dep: [DEPARTURE_TIME], Arr: [ARRIVAL_TIME], $[FLIGHT_PRICE]
         - Hotel: [HOTEL_NAME], $[HOTEL_PRICE]/night, [HOTEL_ADDRESS]
-        - Total estimated cost: $[TOTAL_COST]"
+        - Total estimated cost: $[TOTAL_COST]
+        
+        Your calendar events during this period:
+        [LIST OF CALENDAR EVENTS]"
 
-        Example: "Here’s your travel plan:
+        Example: "Here's your travel plan:
         - Dates: 2025-04-19 to 2025-04-20
         - Flight: Test Airline TA123, Dep: 2025-04-19T10:00, Arr: 2025-04-19T12:00, $199.99
         - Hotel: Unknown Hotel, $150/night, Chicago, IL, USA
-        - Total estimated cost: $349.99"
+        - Total estimated cost: $349.99
+        
+        Your calendar events during this period:
+        - April 19, 2025: 2:30 PM - 3:15 PM: Meeting
+        - April 20, 2025: 4:15 PM - 6:45 PM: Team Call""
         """
     )
     
@@ -234,10 +325,78 @@ def trip_planner(request: str):
     message = request
     conversation_history = []
 
+    def update_state_from_handoff(handoff_message: str, agent_name: str) -> None:
+        """Update state based on handoff message content"""
+        try:
+            # Extract dates
+            if "Available dates:" in handoff_message:
+                dates_match = re.search(r"Available dates: (.*?) to (.*?),", handoff_message)
+                if dates_match:
+                    itinerary_state.update_state(agent_name, {
+                        "dates": {
+                            "start": dates_match.group(1),
+                            "end": dates_match.group(2)
+                        }
+                    })
+
+            # Extract destination
+            if "Destination:" in handoff_message:
+                dest_match = re.search(r"Destination: (.*?)(?:\.|$)", handoff_message)
+                if dest_match:
+                    itinerary_state.update_state(agent_name, {
+                        "destination": dest_match.group(1).strip()
+                    })
+
+            # Extract flight details - improved regex to handle airline names with spaces
+            if "Best flight:" in handoff_message:
+                flight_match = re.search(r"Best flight: ([^,]+), Dep: (.*?), Arr: (.*?), \$([\d.]+)", handoff_message)
+                if flight_match:
+                    airline_flight = flight_match.group(1).strip()
+                    # Split airline and flight number more intelligently
+                    if ' ' in airline_flight:
+                        parts = airline_flight.rsplit(' ', 1)
+                        airline = parts[0]
+                        flight_number = parts[1] if len(parts) > 1 else ""
+                    else:
+                        airline = airline_flight
+                        flight_number = ""
+                    
+                    itinerary_state.update_state(agent_name, {
+                        "flight": {
+                            "airline": airline,
+                            "flight_number": flight_number,
+                            "departure": flight_match.group(2),
+                            "arrival": flight_match.group(3),
+                            "price": float(flight_match.group(4))
+                        }
+                    })
+
+            # Extract hotel details - improved regex to handle empty addresses
+            if "Best hotel:" in handoff_message:
+                hotel_match = re.search(r"Best hotel: ([^,]+), \$([\d.]+)/night(?:, ([^,]+))?(?:, Destination:)", handoff_message)
+                if hotel_match:
+                    hotel_name = hotel_match.group(1).strip()
+                    price = float(hotel_match.group(2))
+                    address = hotel_match.group(3).strip() if hotel_match.group(3) else "Address not available"
+                    
+                    itinerary_state.update_state(agent_name, {
+                        "hotel": {
+                            "name": hotel_name,
+                            "price": price,
+                            "address": address
+                        }
+                    })
+
+        except Exception as e:
+            logger.error(f"Error updating state from handoff: {e}")
+
     while True:
+        # Add current state to message
+        state_message = f"{message}\n\nCurrent Itinerary State:\n{json.dumps(itinerary_state.get_state(), indent=2)}"
+        
         result = Runner.run_sync(
             starting_agent=current_agent,
-            input=message
+            input=state_message
         )
         response = result.final_output if hasattr(result, 'final_output') else str(result)
         
@@ -252,6 +411,10 @@ def trip_planner(request: str):
             if match:
                 target_agent_name = match.group(1)
                 handoff_message = match.group(2)
+                
+                # Update state based on handoff message
+                update_state_from_handoff(handoff_message, current_agent.name)
+                
                 target_agent = next((a for a in [calendar_agent, flights_agent, hotels_agent, travel_agent] if a.name == target_agent_name), None)
                 if target_agent:
                     current_agent = target_agent
@@ -265,11 +428,22 @@ def trip_planner(request: str):
                 break
         else:
             # No handoff detected, this is the final response
+            # If this is the TravelAssistant, update the state with the final plan
+            if current_agent.name == "TravelAssistant":
+                try:
+                    # Extract plan details from the response
+                    plan_updates = {
+                        "status": "complete"
+                    }
+                    itinerary_state.update_state(current_agent.name, plan_updates)
+                except Exception as e:
+                    logger.error(f"Error updating final state: {e}")
             break
 
     # Compile and display the final plan
     final_plan = "\n\n".join([f"{entry['agent']}: {entry['response']}" for entry in conversation_history])
     print("\n=== FINAL PLAN ===\n", final_plan)
+    print("\n=== FINAL STATE ===\n", json.dumps(itinerary_state.get_state(), indent=2))
     return final_plan
 
 # --- Test Cases --- #
