@@ -87,8 +87,8 @@ export default function Budget() {
             updateSurveyData('budget', finalBudget);
             updateSurveyData('budgetTier', selectedTier);
 
-            // Navigate to confirmation screen
-            router.push('/survey/confirmation');
+            // Navigate to itinerary screen directly
+            router.push('/survey/itinerary');
         }
     };
 

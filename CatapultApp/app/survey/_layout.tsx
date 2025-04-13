@@ -20,7 +20,6 @@ export default function SurveyLayout() {
                 <Stack.Screen name="departure" />
                 <Stack.Screen name="transport" />
                 <Stack.Screen name="budget" />
-                <Stack.Screen name="confirmation" />
                 <Stack.Screen name="itinerary" />
             </Stack>
         </SurveyProvider>

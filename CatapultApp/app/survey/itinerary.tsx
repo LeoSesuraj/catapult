@@ -1,25 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSurvey } from './SurveyContext';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
-import { FontSizes, Spacing, BorderRadius, Shadow } from '../../constants/Theme';
+import { FontFamily, Spacing, BorderRadius, Shadow } from '../../constants/Theme';
 import { saveTripData } from '../data/trips';
 import { generateSampleItinerary, storeItinerary } from '../data/itineraryStorage';
 import LoadingScreen from '../components/LoadingScreen';
 import moment from 'moment';
-
-const THEME = {
-    PRIMARY: Colors.primary,
-    BACKGROUND: Colors.background,
-    TEXT_PRIMARY: Colors.text,
-    TEXT_SECONDARY: Colors.mediumGray,
-    CARD_BACKGROUND: Colors.offWhite,
-    BORDER: Colors.secondary,
-};
 
 export default function Itinerary() {
     const { surveyData, addTrip } = useSurvey();
@@ -59,7 +50,7 @@ export default function Itinerary() {
                             // 2. Save trip data
                             const tripData = {
                                 id: tripId,
-                                reason_for_trip: (surveyData.tripType === 'business' ? 'business' : 'personal') as 'personal' | 'business',
+                                reason_for_trip: (surveyData.tripType === 'Business' ? 'Business' : 'Personal') as 'Business' | 'Personal',
                                 location: surveyData.destination || 'Unknown',
                                 start_time: surveyData.startDate || new Date().toISOString(),
                                 end_time: surveyData.endDate || new Date().toISOString(),
@@ -111,6 +102,10 @@ export default function Itinerary() {
         return <LoadingScreen />;
     }
 
+    const formatDate = (dateString: string | null) => {
+        return dateString ? moment(dateString).format('MMM D, YYYY') : 'Not specified';
+    };
+
     return (
         <View style={styles.container}>
             <LinearGradient
@@ -120,7 +115,7 @@ export default function Itinerary() {
                 end={{ x: 1, y: 1 }}
             >
                 <SafeAreaView style={styles.safeArea}>
-                    <ScrollView style={styles.content}>
+                    <View style={styles.content}>
                         <TouchableOpacity
                             style={styles.backButton}
                             onPress={() => router.back()}
@@ -131,71 +126,80 @@ export default function Itinerary() {
                         <Text style={styles.title}>Trip Summary</Text>
                         <Text style={styles.subtitle}>Review your trip details</Text>
 
-                        <View style={styles.tiersContainer}>
-                            {/* Trip Type Card */}
-                            <View style={styles.summaryCard}>
-                                <View style={styles.cardHeader}>
-                                    <View style={[styles.iconContainer, { backgroundColor: Colors.primary }]}>
-                                        <FontAwesome name="suitcase" size={20} color="#FFFFFF" />
-                                    </View>
-                                    <Text style={styles.cardTitle}>Trip Type</Text>
+                        <View style={styles.summaryContainer}>
+                            {/* Trip Type */}
+                            <View style={styles.infoRow}>
+                                <View style={[styles.iconContainer, { backgroundColor: Colors.primary }]}>
+                                    <FontAwesome name="suitcase" size={18} color="#FFFFFF" />
                                 </View>
-                                <Text style={styles.cardValue}>{surveyData.tripType || 'Not specified'}</Text>
-                            </View>
-
-                            {/* Travel Card */}
-                            <View style={styles.summaryCard}>
-                                <View style={styles.cardHeader}>
-                                    <View style={[styles.iconContainer, { backgroundColor: Colors.accent }]}>
-                                        <FontAwesome name="plane" size={20} color="#FFFFFF" />
-                                    </View>
-                                    <Text style={styles.cardTitle}>Travel</Text>
-                                </View>
-                                <View style={styles.locationInfo}>
-                                    <Text style={styles.cardValue}>From: {surveyData.departure || 'Not specified'}</Text>
-                                    <Text style={styles.cardValue}>To: {surveyData.destination || 'Not specified'}</Text>
+                                <View style={styles.infoContent}>
+                                    <Text style={styles.infoLabel}>Trip Type</Text>
+                                    <Text style={styles.infoValue}>{surveyData.tripType || 'Not specified'}</Text>
                                 </View>
                             </View>
 
-                            {/* Dates Card */}
-                            <View style={styles.summaryCard}>
-                                <View style={styles.cardHeader}>
-                                    <View style={[styles.iconContainer, { backgroundColor: Colors.gold }]}>
-                                        <FontAwesome name="calendar" size={20} color="#FFFFFF" />
-                                    </View>
-                                    <Text style={styles.cardTitle}>Dates</Text>
+                            {/* Destination & Transport Combined */}
+                            <View style={styles.infoRow}>
+                                <View style={[styles.iconContainer, { backgroundColor: Colors.accent }]}>
+                                    <FontAwesome
+                                        name={surveyData.transportType === 'fly' ? 'plane' : 'map-marker'}
+                                        size={18}
+                                        color="#FFFFFF"
+                                    />
                                 </View>
-                                <View style={styles.dateInfo}>
-                                    <Text style={styles.cardValue}>From: {surveyData.startDate || 'Not specified'}</Text>
-                                    <Text style={styles.cardValue}>To: {surveyData.endDate || 'Not specified'}</Text>
+                                <View style={styles.infoContent}>
+                                    <Text style={styles.infoLabel}>Travel</Text>
+                                    <Text style={styles.infoValue}>
+                                        {surveyData.destination || 'Not specified'}
+                                        {surveyData.transportType && ` (${surveyData.transportType === 'fly' ? 'Flying' : 'Self-driving'})`}
+                                    </Text>
+                                    {surveyData.transportType === 'fly' && surveyData.departure && (
+                                        <Text style={styles.infoSubvalue}>From: {surveyData.departure}</Text>
+                                    )}
                                 </View>
                             </View>
 
-                            {/* Budget Card */}
-                            <View style={styles.summaryCard}>
-                                <View style={styles.cardHeader}>
-                                    <View style={[styles.iconContainer, { backgroundColor: '#48BB78' }]}>
-                                        <FontAwesome name="dollar" size={20} color="#FFFFFF" />
-                                    </View>
-                                    <Text style={styles.cardTitle}>Budget</Text>
+                            {/* Dates */}
+                            <View style={styles.infoRow}>
+                                <View style={[styles.iconContainer, { backgroundColor: Colors.warning || '#F6AD55' }]}>
+                                    <FontAwesome name="calendar" size={18} color="#FFFFFF" />
                                 </View>
-                                <Text style={styles.cardValue}>
-                                    {surveyData.budget ? `$${surveyData.budget.toLocaleString()}` : 'Not specified'}
-                                </Text>
-                                <Text style={styles.budgetTier}>
-                                    {surveyData.budgetTier ? `${surveyData.budgetTier} tier` : ''}
-                                </Text>
+                                <View style={styles.infoContent}>
+                                    <Text style={styles.infoLabel}>Dates</Text>
+                                    <Text style={styles.infoValue}>
+                                        {formatDate(surveyData.startDate)} - {formatDate(surveyData.endDate)}
+                                    </Text>
+                                    {surveyData.duration && (
+                                        <Text style={styles.infoSubvalue}>
+                                            {surveyData.duration} {surveyData.duration === 1 ? 'day' : 'days'}
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+
+                            {/* Budget */}
+                            <View style={styles.infoRow}>
+                                <View style={[styles.iconContainer, { backgroundColor: '#48BB78' }]}>
+                                    <FontAwesome name="dollar" size={18} color="#FFFFFF" />
+                                </View>
+                                <View style={styles.infoContent}>
+                                    <Text style={styles.infoLabel}>Budget</Text>
+                                    <Text style={styles.infoValue}>
+                                        {surveyData.budget ? `$${surveyData.budget.toLocaleString()}` : 'Not specified'}
+                                        {surveyData.budgetTier && ` (${surveyData.budgetTier.charAt(0).toUpperCase() + surveyData.budgetTier.slice(1)})`}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
 
                         <TouchableOpacity
-                            style={styles.confirmButton}
+                            style={styles.createButton}
                             onPress={handleConfirmTrip}
                         >
-                            <Text style={styles.confirmButtonText}>Confirm Trip</Text>
+                            <Text style={styles.buttonText}>Create Trip</Text>
                             <FontAwesome name="check" size={16} color="#FFFFFF" style={styles.buttonIcon} />
                         </TouchableOpacity>
-                    </ScrollView>
+                    </View>
                 </SafeAreaView>
             </LinearGradient>
         </View>
@@ -228,77 +232,75 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: 'bold',
+        fontFamily: FontFamily.montserratBold || 'sans-serif',
         color: '#FFFFFF',
         marginBottom: Spacing.sm,
     },
     subtitle: {
         fontSize: 16,
+        fontFamily: FontFamily.montserratMedium || 'sans-serif',
         color: '#A0AEC0',
         marginBottom: Spacing.xl,
     },
-    tiersContainer: {
-        marginBottom: Spacing.md,
-    },
-    summaryCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    summaryContainer: {
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
         borderRadius: BorderRadius.lg,
         padding: Spacing.md,
-        marginBottom: Spacing.sm,
-        borderWidth: 2,
-        borderColor: 'transparent',
+        marginBottom: Spacing.xl,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
         ...Shadow.medium,
     },
-    cardHeader: {
+    infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: Spacing.sm,
+        paddingVertical: Spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
     },
     iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: Spacing.sm,
+        marginRight: Spacing.md,
     },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+    infoContent: {
+        flex: 1,
+    },
+    infoLabel: {
+        fontSize: 14,
+        fontFamily: FontFamily.montserratSemiBold || 'sans-serif',
+        color: '#A0AEC0',
+        marginBottom: 2,
+    },
+    infoValue: {
+        fontSize: 16,
+        fontFamily: FontFamily.montserratMedium || 'sans-serif',
         color: '#FFFFFF',
     },
-    cardValue: {
-        fontSize: 16,
-        color: '#CBD5E0',
-        marginLeft: 48, // Align with text after icon
-    },
-    locationInfo: {
-        marginTop: Spacing.xs,
-    },
-    dateInfo: {
-        marginTop: Spacing.xs,
-    },
-    budgetTier: {
+    infoSubvalue: {
         fontSize: 14,
+        fontFamily: FontFamily.montserratMedium || 'sans-serif',
         color: '#A0AEC0',
-        marginLeft: 48,
-        marginTop: 4,
+        marginTop: 2,
     },
-    confirmButton: {
+    createButton: {
+        padding: Spacing.md,
+        borderRadius: BorderRadius.lg,
         backgroundColor: '#48BB78',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: Spacing.md,
-        borderRadius: BorderRadius.lg,
         marginTop: 'auto',
-        marginBottom: Spacing.md,
+        marginBottom: Spacing.xl,
         ...Shadow.medium,
     },
-    confirmButtonText: {
+    buttonText: {
         color: '#FFFFFF',
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: FontFamily.montserratSemiBold || 'sans-serif',
         marginRight: Spacing.sm,
     },
     buttonIcon: {

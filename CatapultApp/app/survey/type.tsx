@@ -10,7 +10,7 @@ export default function TripType() {
     const router = useRouter();
     const { updateSurveyData } = useSurvey();
 
-    const handleSelection = (type: 'business' | 'personal') => {
+    const handleSelection = (type: 'Business' | 'Personal') => {
         updateSurveyData('tripType', type);
         router.push('/survey/location');
     };
@@ -41,7 +41,7 @@ export default function TripType() {
 
                         <TouchableOpacity
                             style={styles.optionButton}
-                            onPress={() => handleSelection('business')}
+                            onPress={() => handleSelection('Business')}
                         >
                             <View style={styles.optionIcon}>
                                 <FontAwesome name="briefcase" size={24} color="#FFFFFF" />
@@ -54,7 +54,7 @@ export default function TripType() {
 
                         <TouchableOpacity
                             style={styles.optionButton}
-                            onPress={() => handleSelection('personal')}
+                            onPress={() => handleSelection('Personal')}
                         >
                             <View style={styles.optionIcon}>
                                 <FontAwesome name="plane" size={24} color="#FFFFFF" />

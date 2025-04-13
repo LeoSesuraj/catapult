@@ -1,7 +1,7 @@
 import { Itinerary } from './itineraryStorage';
 
 export interface TripData {
-    reason_for_trip: 'personal' | 'business';
+    reason_for_trip: 'Personal' | 'Business';
     location: string;
     start_time: string;
     end_time: string;
@@ -11,7 +11,7 @@ export interface TripData {
 
 export const sampleTrips: TripData[] = [
     {
-        reason_for_trip: "personal",
+        reason_for_trip: "Personal",
         location: "NYC",
         start_time: "2025-04-10T08:30:00Z",
         end_time: "2025-04-15T18:00:00Z",
@@ -19,7 +19,7 @@ export const sampleTrips: TripData[] = [
         itinerary: undefined
     },
     {
-        reason_for_trip: "business",
+        reason_for_trip: "Business",
         location: "LAX",
         start_time: "2025-04-12T14:15:00Z",
         end_time: "2025-04-14T20:30:00Z",

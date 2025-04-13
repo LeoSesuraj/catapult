@@ -829,7 +829,7 @@ export default function TestItineraryScreen() {
                             onPress={() => {
                                 // Save empty trip data first
                                 const newTrip: TripData = {
-                                    reason_for_trip: 'personal',
+                                    reason_for_trip: 'Personal',
                                     location: 'Not specified',
                                     start_time: new Date().toISOString(),
                                     end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),

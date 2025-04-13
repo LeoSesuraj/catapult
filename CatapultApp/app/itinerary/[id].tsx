@@ -151,21 +151,21 @@ type FlightOption = {
 // Update the TRIPS constant to match TripData type
 const TRIPS: { [key: string]: TripData } = {
     '1': {
-        reason_for_trip: 'personal',
+        reason_for_trip: 'Personal',
         location: 'Paris, France',
         start_time: '2023-06-05',
         end_time: '2023-06-10',
         budget: 5000
     },
     '2': {
-        reason_for_trip: 'personal',
+        reason_for_trip: 'Personal',
         location: 'Tokyo, Japan',
         start_time: '2023-08-12',
         end_time: '2023-08-22',
         budget: 8000
     },
     '5': {
-        reason_for_trip: 'personal',
+        reason_for_trip: 'Personal',
         location: 'Chicago, USA',
         start_time: '2023-07-15',
         end_time: '2023-07-20',
