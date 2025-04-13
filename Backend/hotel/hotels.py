@@ -1,13 +1,7 @@
 from amadeus import Client, ResponseError
-import os
-from dotenv import load_dotenv
+import json
 
-load_dotenv()
-
-amadeus = Client(
-    client_id=os.getenv('AMADEUS_CLIENT_ID'),
-    client_secret=os.getenv('AMADEUS_CLIENT_SECRET')
-)
+amadeus = Client(client_id='4DOHUkYZtyPPu4FrRG8cmzXqrnhwwNby', client_secret='yG0IHsgf3eRA0J0d')
 
 def get_hotel(cityCode):
     try:

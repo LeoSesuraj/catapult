@@ -97,21 +97,19 @@ def run_flight_agent(from_city_raw, to_city_raw, depart_date):
 
     if from_city == "unknown" or to_city == "unknown":
         print(f"❌ Unable to find IATA code for: {from_city_raw} or {to_city_raw}")
-        return
+        return None  # Return None to indicate failure
 
     print(f"🔍 Searching flights from {from_city} to {to_city} on {depart_date}...")
     flights = search_flights(from_city, to_city, depart_date)
     if not flights:
         print("No flights found.")
-        return
+        return None  # Return None if no flights are found
 
     best_flight = select_best_flight(flights)
-    print("✈️ Best flight found:")
-    print(json.dumps(best_flight, indent=2))
-
-# -----------------------------------
-# Example usage
-# -----------------------------------
-if __name__ == "__main__":
-    # Replace these values or prompt the user / take command line args
-    run_flight_agent("Boston", "Chicago", "2025-05-09")
+    if best_flight:
+        print("✈️ Best flight found:")
+        print(json.dumps(best_flight, indent=2))
+        return best_flight
+    else:
+        print("No best flight selected.")
+        return None

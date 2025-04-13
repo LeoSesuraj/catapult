@@ -127,7 +127,7 @@ def list_all_calendars():
         print(f'An error occurred while listing calendars: {error}')
         return []
 
-def get_calendar_events_single(start_date=None, end_date=None, calendar_id='primary', calendar_name=None):
+def get_calendar_events_single(start_date, end_date, calendar_id='primary', calendar_name=None):
     """
     Fetch events from a single Google Calendar for a specified date range
     
@@ -210,7 +210,7 @@ def get_calendar_events_single(start_date=None, end_date=None, calendar_id='prim
         print(f'An error occurred: {error}')
         return {"error": str(error)}
 
-def get_calendar_events(start_date=None, end_date=None, calendar_id=None):
+def get_calendar_events(start_date, end_date, calendar_id=None):
     """
     Fetch events from Google Calendar for a specified date range.
     If calendar_id is None, gets events from all calendars.
