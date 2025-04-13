@@ -9,7 +9,8 @@ import {
     Modal,
     Alert,
     ScrollView,
-    Platform
+    Platform,
+    TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
@@ -52,7 +53,12 @@ const THEME = {
 };
 
 // Activity type config
-const ACTIVITY_TYPE_CONFIG = {
+const ACTIVITY_TYPE_CONFIG: {
+    [key: string]: {
+        icon: 'cutlery' | 'map-marker' | 'car' | 'home' | 'coffee' | 'plane' | 'building' | 'calendar';
+        color: string;
+    }
+} = {
     'meal': { icon: 'cutlery', color: THEME.MEAL },
     'attraction': { icon: 'map-marker', color: THEME.ATTRACTION },
     'transport': { icon: 'car', color: THEME.TRANSPORT },
@@ -128,6 +134,11 @@ export default function ItineraryDetailScreen() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [viewMode] = useState<'days'>('days');
     const [lockedEvents, setLockedEvents] = useState<string[]>([]);
+    const [editTitle, setEditTitle] = useState('');
+    const [editTime, setEditTime] = useState('');
+    const [editDescription, setEditDescription] = useState('');
+    const [editLocation, setEditLocation] = useState('');
+    const [editType, setEditType] = useState<string>('');
 
     useEffect(() => {
         Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
@@ -239,7 +250,45 @@ export default function ItineraryDetailScreen() {
             setSelectedEvent(event);
             setSelectedDayIndex(dayIndex);
             setSelectedEventIndex(eventIndex);
+            setEditTitle(event.title);
+            setEditTime(event.time);
+            setEditDescription(event.description);
+            setEditLocation(event.location || '');
+            setEditType(event.type);
             setModalVisible(true);
+        }
+    };
+
+    const handleUpdateEvent = () => {
+        if (selectedDayIndex !== null && selectedEventIndex !== null) {
+            const updatedDays = [...days];
+
+            // Check if time has changed
+            const currentTime = updatedDays[selectedDayIndex].activities[selectedEventIndex].time;
+            const timeChanged = currentTime !== editTime;
+
+            // Update the event
+            updatedDays[selectedDayIndex].activities[selectedEventIndex] = {
+                ...updatedDays[selectedDayIndex].activities[selectedEventIndex],
+                title: editTitle,
+                time: editTime,
+                description: editDescription,
+                location: editLocation,
+                type: editType as any,
+                isLocked: selectedEvent?.isLocked
+            };
+
+            // Re-sort activities by time after updating
+            updatedDays[selectedDayIndex].activities.sort((a, b) => a.time.localeCompare(b.time));
+
+            setDays(updatedDays);
+            saveChangesToStorage(updatedDays);
+            setModalVisible(false);
+
+            // Show feedback if time was changed
+            if (timeChanged) {
+                Alert.alert("Event Updated", "Event time was changed and schedule was reorganized.");
+            }
         }
     };
 
@@ -467,79 +516,126 @@ export default function ItineraryDetailScreen() {
                                                 <Feather name="x" size={24} color={THEME.TEXT_PRIMARY} />
                                             </TouchableOpacity>
                                         </View>
-                                        {selectedEvent && (
-                                            <ScrollView style={styles.modalScrollView}>
-                                                <View style={styles.eventDetailsContainer}>
-                                                    <View style={styles.eventTypeHeader}>
-                                                        <FontAwesome
-                                                            name={getActivityIcon(selectedEvent.type)}
-                                                            size={24}
-                                                            color={getActivityColor(selectedEvent.type)}
-                                                        />
-                                                        <Text style={styles.eventTypeText}>
-                                                            {selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={styles.eventTitle}>{selectedEvent.title}</Text>
-                                                    <View style={styles.eventTimeRow}>
-                                                        <Feather name="clock" size={16} color={THEME.TEXT_SECONDARY} />
-                                                        <Text style={styles.eventTime}>{selectedEvent.time}</Text>
-                                                    </View>
-                                                    {selectedEvent.location && (
-                                                        <View style={styles.eventLocationRow}>
-                                                            <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
-                                                            <Text style={styles.eventLocation}>{selectedEvent.location}</Text>
-                                                        </View>
-                                                    )}
-                                                    {selectedEvent.description && (
-                                                        <View style={styles.eventDescriptionContainer}>
-                                                            <Text style={styles.eventDescription}>{selectedEvent.description}</Text>
-                                                        </View>
-                                                    )}
+                                        <ScrollView style={styles.modalScrollView}>
+                                            <View style={styles.eventDetailsContainer}>
+                                                <View style={styles.eventTypeHeader}>
+                                                    <FontAwesome
+                                                        name={getActivityIcon(editType)}
+                                                        size={24}
+                                                        color={getActivityColor(editType)}
+                                                    />
+                                                    <Text style={styles.eventTypeText}>
+                                                        {editType.charAt(0).toUpperCase() + editType.slice(1)}
+                                                    </Text>
                                                 </View>
-                                                <View style={styles.modalActions}>
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, styles.findAlternativeButton]}
-                                                        onPress={() => {
-                                                            Alert.alert("Find Alternative", "Fetching suggestions...", [
-                                                                {
-                                                                    text: "OK",
-                                                                    onPress: () => console.log("Calling GPT for alternatives..."),
-                                                                },
-                                                            ]);
-                                                        }}
-                                                    >
-                                                        <Feather name="refresh-cw" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                        <Text style={styles.actionButtonText}>Find Alternative</Text>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, selectedEvent.isLocked ? styles.unlockButton : styles.lockButton]}
-                                                        onPress={() => {
-                                                            if (selectedDayIndex !== null && selectedEventIndex !== null) {
-                                                                toggleEventLock(selectedEvent.id, selectedDayIndex, selectedEventIndex);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Feather
-                                                            name={selectedEvent.isLocked ? "unlock" : "lock"}
-                                                            size={18}
-                                                            color="#fff"
-                                                            style={styles.actionButtonIcon}
-                                                        />
-                                                        <Text style={styles.actionButtonText}>
-                                                            {selectedEvent.isLocked ? "Unlock Event" : "Lock Event"}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, styles.deleteButton]}
-                                                        onPress={handleDeleteEvent}
-                                                    >
-                                                        <Feather name="trash-2" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                        <Text style={styles.actionButtonText}>Delete Event</Text>
-                                                    </TouchableOpacity>
+
+                                                <TextInput
+                                                    style={[styles.eventTitle, styles.input]}
+                                                    value={editTitle}
+                                                    onChangeText={setEditTitle}
+                                                    placeholder="Event Title"
+                                                    placeholderTextColor={THEME.TEXT_TERTIARY}
+                                                />
+
+                                                <View style={styles.inputRow}>
+                                                    <Feather name="clock" size={16} color={THEME.TEXT_SECONDARY} />
+                                                    <TextInput
+                                                        style={[styles.eventTime, styles.input]}
+                                                        value={editTime}
+                                                        onChangeText={setEditTime}
+                                                        placeholder="Time (HH:MM)"
+                                                        placeholderTextColor={THEME.TEXT_TERTIARY}
+                                                    />
                                                 </View>
-                                            </ScrollView>
-                                        )}
+
+                                                <View style={styles.inputRow}>
+                                                    <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
+                                                    <TextInput
+                                                        style={[styles.eventLocation, styles.input]}
+                                                        value={editLocation}
+                                                        onChangeText={setEditLocation}
+                                                        placeholder="Location"
+                                                        placeholderTextColor={THEME.TEXT_TERTIARY}
+                                                    />
+                                                </View>
+
+                                                <View style={styles.eventDescriptionContainer}>
+                                                    <TextInput
+                                                        style={[styles.eventDescription, styles.input]}
+                                                        value={editDescription}
+                                                        onChangeText={setEditDescription}
+                                                        placeholder="Description"
+                                                        placeholderTextColor={THEME.TEXT_TERTIARY}
+                                                        multiline
+                                                        numberOfLines={4}
+                                                    />
+                                                </View>
+
+                                                <View style={styles.typeSelector}>
+                                                    {Object.entries(ACTIVITY_TYPE_CONFIG).map(([type, config]) => (
+                                                        <TouchableOpacity
+                                                            key={type}
+                                                            style={[
+                                                                styles.typeOption,
+                                                                { backgroundColor: editType === type ? config.color : 'transparent' }
+                                                            ]}
+                                                            onPress={() => setEditType(type)}
+                                                        >
+                                                            <FontAwesome name={config.icon} size={16} color={editType === type ? '#fff' : config.color} />
+                                                            <Text style={[
+                                                                styles.typeText,
+                                                                { color: editType === type ? '#fff' : THEME.TEXT_SECONDARY }
+                                                            ]}>
+                                                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                            <View style={styles.modalActions}>
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.findAlternativeButton]}
+                                                    onPress={() => {
+                                                        Alert.alert("Find Alternative", "Fetching suggestions...");
+                                                    }}
+                                                >
+                                                    <Feather name="refresh-cw" size={18} color="#fff" style={styles.actionButtonIcon} />
+                                                    <Text style={styles.actionButtonText}>Find Alternative</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, selectedEvent?.isLocked ? styles.unlockButton : styles.lockButton]}
+                                                    onPress={() => {
+                                                        if (selectedDayIndex !== null && selectedEventIndex !== null && selectedEvent) {
+                                                            toggleEventLock(selectedEvent.id, selectedDayIndex, selectedEventIndex);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Feather
+                                                        name={selectedEvent?.isLocked ? "unlock" : "lock"}
+                                                        size={18}
+                                                        color="#fff"
+                                                        style={styles.actionButtonIcon}
+                                                    />
+                                                    <Text style={styles.actionButtonText}>
+                                                        {selectedEvent?.isLocked ? "Unlock Event" : "Lock Event"}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.saveButton]}
+                                                    onPress={handleUpdateEvent}
+                                                >
+                                                    <Feather name="check" size={18} color="#fff" style={styles.actionButtonIcon} />
+                                                    <Text style={styles.actionButtonText}>Save Changes</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.deleteButton]}
+                                                    onPress={handleDeleteEvent}
+                                                >
+                                                    <Feather name="trash-2" size={18} color="#fff" style={styles.actionButtonIcon} />
+                                                    <Text style={styles.actionButtonText}>Delete Event</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </ScrollView>
                                     </LinearGradient>
                                 </Animated.View>
                             </BlurView>
@@ -773,20 +869,25 @@ const styles = StyleSheet.create({
         color: THEME.TEXT_PRIMARY,
         marginBottom: 16,
     },
-    eventTimeRow: {
+    input: {
+        color: THEME.TEXT_PRIMARY,
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: THEME.BACKGROUND,
+        borderWidth: 1,
+        borderColor: THEME.BORDER,
+        marginVertical: 4,
+    },
+    inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginVertical: 8,
+        gap: 8,
     },
     eventTime: {
         fontSize: 16,
         color: THEME.TEXT_SECONDARY,
         marginLeft: 8,
-    },
-    eventLocationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
     },
     eventLocation: {
         fontSize: 16,
@@ -897,4 +998,26 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     flightIcon: { marginTop: 8 },
+    typeSelector: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 16,
+    },
+    typeOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: THEME.BORDER,
+        gap: 8,
+    },
+    typeText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    saveButton: {
+        backgroundColor: '#48bb78',
+    },
 });
