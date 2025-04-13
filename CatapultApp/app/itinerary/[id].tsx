@@ -5,6 +5,8 @@ import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Feather from '@expo/vector-icons/Feather';
+import { getItinerary, Itinerary, ItineraryDay as StoredItineraryDay, ItineraryEvent as StoredItineraryEvent } from '../data/itineraryStorage';
+import moment from 'moment';
 
 // Constants that can be easily imported/generated
 const THEME = {
@@ -14,15 +16,15 @@ const THEME = {
     TEXT_PRIMARY: '#E2E8F0',
     TEXT_SECONDARY: '#A0AEC0',
     TEXT_TERTIARY: '#718096',
-    
+
     // UI element colors
     CARD_BACKGROUND: '#2d3748',
     CARD_BORDER: 'rgba(255, 255, 255, 0.1)',
-    
+
     // Tab colors
     TAB_INACTIVE: '#4A5568',
     TAB_ACTIVE: '#A0AEC0',
-    
+
     // Activity type colors
     ACTIVITY_MEAL: '#C1E1C1',          // Light green
     ACTIVITY_ATTRACTION: '#FFD1DC',     // Light pink
@@ -50,6 +52,26 @@ const ACTIVITY_TYPE_CONFIG = {
         color: THEME.ACTIVITY_ACCOMMODATION
     },
     'free-time': {
+        icon: 'coffee',
+        color: THEME.ACTIVITY_FREE_TIME
+    },
+    'flight': {
+        icon: 'plane',
+        color: THEME.ACTIVITY_TRANSPORT
+    },
+    'hotel': {
+        icon: 'building',
+        color: THEME.ACTIVITY_ACCOMMODATION
+    },
+    'activity': {
+        icon: 'map-marker',
+        color: THEME.ACTIVITY_ATTRACTION
+    },
+    'calendar': {
+        icon: 'calendar',
+        color: THEME.ACTIVITY_FREE_TIME
+    },
+    'rest': {
         icon: 'coffee',
         color: THEME.ACTIVITY_FREE_TIME
     }
@@ -311,11 +333,120 @@ const TRIPS: { [key: string]: TripData } = {
 
 // Main component - structured for easier generation
 export default function ItineraryDetailScreen() {
-    // State variables
-    const { id } = useLocalSearchParams();
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const [activeDay, setActiveDay] = useState<string | null>(null);
+    const params = useLocalSearchParams();
+    const { id } = params;
     const [trip, setTrip] = useState<TripData | null>(null);
+    const [storedItinerary, setStoredItinerary] = useState<Itinerary | null>(null);
+    const [activeDay, setActiveDay] = useState<string | null>(null);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const [loading, setLoading] = useState(true);
+
+    // Animation refs
+    const scrollY = useRef(new Animated.Value(0)).current;
+    const headerOpacity = scrollY.interpolate({
+        inputRange: [0, 100],
+        outputRange: [0, 1],
+        extrapolate: 'clamp'
+    });
+
+    // Convert stored itinerary days to match our UI components if needed
+    const convertedDays = storedItinerary?.itinerary.map((day: StoredItineraryDay, index: number) => {
+        // Format the date to be more readable (e.g., "Monday, June 5")
+        const formattedDate = day.date ? moment(day.date).format('dddd, MMMM D') : `Day ${index + 1}`;
+
+        return {
+            id: `day${index + 1}`,
+            date: formattedDate,
+            activities: day.events.map((event: StoredItineraryEvent, eventIndex: number) => {
+                // Map the event type to one of the allowed activity types
+                let mappedType: 'meal' | 'attraction' | 'transport' | 'accommodation' | 'free-time' = 'attraction';
+
+                // Map event types to our UI types
+                switch (event.type) {
+                    case 'flight':
+                        mappedType = 'transport';
+                        break;
+                    case 'hotel':
+                        mappedType = 'accommodation';
+                        break;
+                    case 'meal':
+                        mappedType = 'meal';
+                        break;
+                    case 'activity':
+                        mappedType = 'attraction';
+                        break;
+                    case 'rest':
+                        mappedType = 'free-time';
+                        break;
+                    default:
+                        mappedType = 'attraction';
+                }
+
+                return {
+                    id: `e${index + 1}-${eventIndex}`,
+                    time: event.time,
+                    title: event.title,
+                    description: event.description,
+                    location: event.location,
+                    type: mappedType
+                };
+            })
+        };
+    }) || [];
+
+    // Use stored itinerary if available, otherwise fallback to static data
+    const displayDays = storedItinerary ? convertedDays : (trip?.days || []);
+
+    useEffect(() => {
+        // Load trip data from static data source
+        console.log(`Loading trip data for ID: "${id}"`);
+        const tripData = TRIPS[id as string];
+        if (tripData) {
+            console.log("Found predefined trip data");
+            setTrip(tripData);
+        } else {
+            console.log("No predefined trip, creating default structure");
+            // Create default trip data when not in static list
+            const defaultTrip: TripData = {
+                id: id as string,
+                destination: 'Your Trip',
+                image: 'https://images.unsplash.com/photo-1488085061387-422e29b40080?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                dates: 'Your Trip Dates',
+                status: 'upcoming',
+                days: []
+            };
+            setTrip(defaultTrip);
+        }
+
+        // Load stored itinerary from AsyncStorage
+        const loadStoredItinerary = async () => {
+            try {
+                console.log("Loading stored itinerary from AsyncStorage...");
+                const itineraryData = await getItinerary();
+                if (itineraryData) {
+                    console.log(`Loaded itinerary with ${itineraryData.itinerary.length} days`);
+                    setStoredItinerary(itineraryData);
+                } else {
+                    console.log("No stored itinerary found");
+                }
+            } catch (error) {
+                console.error('Error loading stored itinerary:', error);
+            } finally {
+                // Mark loading as done regardless of result
+                setLoading(false);
+            }
+        };
+
+        loadStoredItinerary();
+    }, [id]);
+
+    // Set active day when data is available
+    useEffect(() => {
+        // Set first day as active when data becomes available
+        if (displayDays && displayDays.length > 0 && !activeDay) {
+            setActiveDay(displayDays[0].id);
+        }
+    }, [displayDays, activeDay]);
 
     // Effects
     useEffect(() => {
@@ -325,21 +456,10 @@ export default function ItineraryDetailScreen() {
             duration: 800,
             useNativeDriver: true,
         }).start();
-
-        // Get trip data
-        if (id && typeof id === 'string') {
-            const tripData = TRIPS[id];
-            setTrip(tripData);
-            
-            // Set first day as active
-            if (tripData && tripData.days.length > 0) {
-                setActiveDay(tripData.days[0].id);
-            }
-        }
-    }, [id]);
+    }, []);
 
     // Loading state
-    if (!trip) {
+    if (loading) {
         return (
             <View style={styles.container}>
                 <LinearGradient
@@ -355,14 +475,14 @@ export default function ItineraryDetailScreen() {
     }
 
     // Get active day data
-    const activeDayData = trip.days.find((day) => day.id === activeDay);
+    const activeDayData = displayDays.find((day) => day.id === activeDay);
 
     // Helper functions
-    const getActivityIcon = (type: string) => {
+    const getActivityIcon = (type: string): any => {
         return ACTIVITY_TYPE_CONFIG[type as keyof typeof ACTIVITY_TYPE_CONFIG]?.icon || 'circle';
     };
 
-    const getActivityColor = (type: string) => {
+    const getActivityColor = (type: string): string => {
         return ACTIVITY_TYPE_CONFIG[type as keyof typeof ACTIVITY_TYPE_CONFIG]?.color || THEME.TEXT_PRIMARY;
     };
 
@@ -394,11 +514,11 @@ export default function ItineraryDetailScreen() {
             </View>
             <View style={styles.activityContent}>
                 <View style={styles.activityHeader}>
-                    <FontAwesome 
-                        name={getActivityIcon(item.type)} 
-                        size={16} 
-                        color={getActivityColor(item.type)} 
-                        style={styles.activityIcon} 
+                    <FontAwesome
+                        name={getActivityIcon(item.type)}
+                        size={16}
+                        color={getActivityColor(item.type)}
+                        style={styles.activityIcon}
                     />
                     <Text style={styles.activityTitle}>{item.title}</Text>
                 </View>
@@ -423,14 +543,14 @@ export default function ItineraryDetailScreen() {
                 <SafeAreaView style={styles.safeArea}>
                     <Stack.Screen
                         options={{
-                            title: trip.destination,
+                            title: trip?.destination || 'Trip Details',
                             headerShown: true,
                             headerTransparent: true,
                             headerTintColor: THEME.TEXT_PRIMARY,
                             headerTitleStyle: styles.headerTitle,
                             headerLeft: () => (
                                 <TouchableOpacity
-                                    onPress={() => router.back()}
+                                    onPress={() => router.push('/')}
                                     style={styles.backButton}
                                 >
                                     <FontAwesome name="chevron-left" size={16} color={THEME.TEXT_PRIMARY} />
@@ -440,21 +560,21 @@ export default function ItineraryDetailScreen() {
                     />
 
                     <View style={styles.content}>
-                        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-                            <Image source={{ uri: trip.image }} style={styles.headerImage} />
+                        <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
+                            <Image source={{ uri: trip?.image || 'https://images.unsplash.com/photo-1488085061387-422e29b40080?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60' }} style={styles.headerImage} />
                             <LinearGradient
                                 colors={['transparent', 'rgba(0,0,0,0.7)']}
                                 style={styles.imageOverlay}
                             />
                             <View style={styles.tripMeta}>
-                                <Text style={styles.destinationText}>{trip.destination}</Text>
-                                <Text style={styles.datesText}>{trip.dates}</Text>
+                                <Text style={styles.destinationText}>{trip?.destination || 'Your Trip'}</Text>
+                                <Text style={styles.datesText}>{trip?.dates || 'Your Trip Dates'}</Text>
                             </View>
                         </Animated.View>
 
                         <View style={styles.daysContainer}>
                             <FlatList
-                                data={trip.days}
+                                data={displayDays}
                                 renderItem={renderDay}
                                 keyExtractor={(item) => item.id}
                                 horizontal
@@ -505,7 +625,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 50,
     },
-    
+
     // Header styles
     backButton: {
         padding: 8,
@@ -559,7 +679,7 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
     },
-    
+
     // Days tabs styles
     daysContainer: {
         marginTop: 5,
@@ -595,7 +715,7 @@ const styles = StyleSheet.create({
         color: THEME.TEXT_PRIMARY,
         marginBottom: 16,
     },
-    
+
     // Activities styles
     activitiesContainer: {
         flex: 1,

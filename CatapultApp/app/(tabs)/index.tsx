@@ -36,6 +36,10 @@ export default function TripsScreen() {
     router.push('/survey');
   };
 
+  const handleTestItinerary = () => {
+    router.push('/test-itinerary');
+  };
+
   const renderTripCard = ({ item }: { item: Trip }) => {
     return (
       <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
@@ -85,10 +89,16 @@ export default function TripsScreen() {
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>My Trips</Text>
-            <TouchableOpacity style={styles.createButton} onPress={handleCreateTrip}>
-              <FontAwesome name="plus" size={16} color="#FFFFFF" style={styles.createButtonIcon} />
-              <Text style={styles.createButtonText}>New Trip</Text>
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity style={styles.testButton} onPress={handleTestItinerary}>
+                <FontAwesome name="list" size={16} color="#FFFFFF" style={styles.buttonIcon} />
+                <Text style={styles.buttonText}>Test Itinerary</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.createButton} onPress={handleCreateTrip}>
+                <FontAwesome name="plus" size={16} color="#FFFFFF" style={styles.createButtonIcon} />
+                <Text style={styles.createButtonText}>New Trip</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <FlatList
@@ -128,6 +138,28 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.montserratBold,
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  testButton: {
+    backgroundColor: '#4A5568',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.lg,
+    marginRight: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...Shadow.medium,
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: FontFamily.montserratSemiBold,
   },
   createButton: {
     backgroundColor: '#4A5568',

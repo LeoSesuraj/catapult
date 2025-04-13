@@ -7,6 +7,7 @@ export interface SurveyData {
     departure: string | null;
     startDate: string | null;
     endDate: string | null;
+    duration: number | null;
     budget: number | null;
     budgetTier: string | null;
 }
@@ -34,6 +35,7 @@ const defaultSurveyData: SurveyData = {
     departure: null,
     startDate: null,
     endDate: null,
+    duration: null,
     budget: null,
     budgetTier: null,
 };
