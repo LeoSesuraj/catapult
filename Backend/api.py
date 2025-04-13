@@ -3,6 +3,12 @@ from flask_cors import CORS
 import json
 import logging
 from direct_itinerary import create_itinerary
+from auth_calendar import authenticate_calendar
+from calendar_py.calendar_code import get_calendar_service, get_calendar_events
+import os
+from dotenv import load_dotenv
+from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
 
 # Set up logging
 logging.basicConfig(
@@ -22,6 +28,19 @@ CORS(app,
     allow_headers=["Content-Type", "Authorization", "Accept"],
     methods=["GET", "POST", "OPTIONS"]
 )
+
+# Configure Google OAuth2 client
+CLIENT_CONFIG = {
+    "web": {
+        "client_id": os.getenv("CLIENT_ID"),
+        "client_secret": os.getenv("CLIENT_SECRET"),
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "redirect_uris": ["catapult://calendar-auth"]
+    }
+}
+
+SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
 @app.route('/api/generate-itinerary', methods=['POST'])
 def generate_itinerary():
@@ -87,6 +106,61 @@ def health_check():
     logger.info(f"Health check requested from: {request.remote_addr}")
     return jsonify({"status": "healthy"})
 
+@app.route('/api/calendar/auth', methods=['GET'])
+def get_auth_url():
+    try:
+        flow = Flow.from_client_config(
+            CLIENT_CONFIG,
+            scopes=SCOPES,
+            redirect_uri="catapult://calendar-auth"
+        )
+        auth_url, _ = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true'
+        )
+        return jsonify({'authUrl': auth_url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/calendar/token', methods=['POST'])
+def get_token():
+    try:
+        data = request.json
+        token = data.get('token')
+        if not token:
+            return jsonify({'error': 'No token provided'}), 400
+
+        # Create credentials from the access token
+        creds = Credentials(
+            token=token,
+            scopes=['https://www.googleapis.com/auth/calendar.readonly']
+        )
+
+        # Save the credentials
+        token_path = os.path.join(os.path.dirname(__file__), 'calendar_py', 'token.json')
+        os.makedirs(os.path.dirname(token_path), exist_ok=True)
+        with open(token_path, 'w') as token_file:
+            token_file.write(creds.to_json())
+
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error processing token: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/calendar/events', methods=['GET'])
+def get_events():
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        if not start_date or not end_date:
+            return jsonify({'error': 'Start date and end date are required'}), 400
+
+        events = get_calendar_events(start_date, end_date)
+        return jsonify(events)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info("Starting API server on port 5000")
@@ -104,5 +178,8 @@ if __name__ == "__main__":
     print("API Documentation:")
     print("  1. POST /api/generate-itinerary - Generate an itinerary from survey data")
     print("  2. GET /api/health - Check API health")
+    print("  3. GET /api/calendar/auth - Get Google Calendar authentication URL")
+    print("  4. POST /api/calendar/token - Get Google Calendar access token")
+    print("  5. GET /api/calendar/events - Get Google Calendar events")
     print("=" * 40)
     app.run(host='0.0.0.0', port=5000, debug=True) 

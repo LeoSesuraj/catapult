@@ -16,116 +16,111 @@ _service = None
 def get_calendar_service():
     """
     Set up and return an authenticated Google Calendar service
-    using credentials from a config file
+    using credentials from token.json
     """
-    global _service
-    if _service is not None:
-        return _service
-
-    load_dotenv()
-
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     token_path = os.path.join(script_dir, 'token.json')
-    print(f"Looking for token.json at: {token_path}")  # Debug: Confirm token path
 
-    # Construct client configuration from environment variables
-    try:
-        client_config = {
-            "installed": {
-                "client_id": os.getenv("CLIENT_ID"),
-                "client_secret": os.getenv("CLIENT_SECRET"),
-                "auth_uri": os.getenv("AUTH_URI"),
-                "token_uri": os.getenv("TOKEN_URI"),
-                "redirect_uris": ["http://localhost:8080"]
-            }
-        }
-        # Check if any required key is missing
-        if not all(client_config["installed"].values()):
-            raise ValueError("One or more credentials are missing from .env file")
-    except Exception as e:
-        print(f"Error loading credentials: {e}")
-        return None
-    
     creds = None
-    # Try to load existing token.json if it exists
     if os.path.exists(token_path):
         try:
-            with open(token_path, 'r') as token_file:
-                token_data = json.load(token_file)  # Verify JSON is valid
             creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-        except (json.JSONDecodeError, ValueError) as e:
-            print(f"Error loading token: Invalid or corrupted token.json ({e}). Starting new authentication.")
-            # Delete the corrupted token.json to force re-authentication
-            os.remove(token_path)
         except Exception as e:
             print(f"Error loading token: {e}")
+            return None
 
-    # If no valid credentials, run OAuth2 flow
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-            except Exception as e:
-                print(f"Error refreshing token: {e}")
-                creds = None
-        
-        if not creds:
-            try:
-                flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-                # Customize the success message to auto-close the tab
-                success_message = """
-                """
-                creds = flow.run_local_server(
-                    port=8080,
-                    open_browser=True,
-                    success_message=success_message
-                )
-                # Save the credentials for future runs
                 with open(token_path, 'w') as token:
                     token.write(creds.to_json())
             except Exception as e:
-                print(f"Error during OAuth2 authentication: {e}")
+                print(f"Error refreshing token: {e}")
                 return None
+        else:
+            print("No valid credentials available")
+            return None
 
     try:
-        _service = build('calendar', 'v3', credentials=creds)
-        return _service
+        service = build('calendar', 'v3', credentials=creds)
+        return service
     except Exception as e:
         print(f"Error building calendar service: {e}")
         return None
 
-def list_all_calendars(service):
+def get_calendar_events(start_date, end_date):
     """
-    List all calendars the user has access to
+    Get events from the user's primary calendar between start_date and end_date
+    
+    Args:
+        start_date (str): Start date in YYYY-MM-DD format
+        end_date (str): End date in YYYY-MM-DD format
     
     Returns:
-        list: List of dictionaries containing calendar info (id, summary, etc.)
+        dict: Dictionary containing events or error message
     """
-    # service = get_calendar_service()
-    
-    # if not service:
-    #     return []
-    
     try:
-        # Get list of calendars
-        calendar_list = service.calendarList().list().execute()
+        service = get_calendar_service()
+        if not service:
+            return {"error": "Failed to get calendar service"}
+
+        # Convert dates to RFC3339 timestamp
+        start_datetime = f"{start_date}T00:00:00Z"
+        end_datetime = f"{end_date}T23:59:59Z"
+
+        events_result = service.events().list(
+            calendarId='primary',
+            timeMin=start_datetime,
+            timeMax=end_datetime,
+            maxResults=100,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+
+        events = events_result.get('items', [])
         
-        # Format the calendar list
-        calendars = []
-        for calendar in calendar_list.get('items', []):
-            calendars.append({
-                'id': calendar['id'],
-                'summary': calendar.get('summary', 'Unnamed Calendar'),
-                'description': calendar.get('description', ''),
-                'primary': calendar.get('primary', False)
+        # Format events for frontend
+        formatted_events = []
+        for event in events:
+            start = event['start'].get('dateTime', event['start'].get('date'))
+            end = event['end'].get('dateTime', event['end'].get('date'))
+            formatted_events.append({
+                'id': event['id'],
+                'summary': event['summary'],
+                'start': start,
+                'end': end,
+                'description': event.get('description', ''),
+                'location': event.get('location', '')
             })
-        
-        return calendars
+
+        return {
+            "success": True,
+            "events": formatted_events
+        }
+
+    except Exception as e:
+        return {
+            "error": f"Failed to fetch calendar events: {str(e)}"
+        }
+
+def list_all_calendars(service):
+    """
+    List all available calendars for the authenticated user
     
-    except Exception as error:
-        print(f'An error occurred while listing calendars: {error}')
-        return []
+    Args:
+        service: Authenticated Google Calendar service
+    
+    Returns:
+        list: List of calendar objects
+    """
+    try:
+        calendar_list = service.calendarList().list().execute()
+        return calendar_list.get('items', [])
+    except Exception as e:
+        print(f"Error listing calendars: {e}")
+        return None
 
 def get_calendar_events_single(start_date, end_date, calendar_id='primary', calendar_name=None):
     """

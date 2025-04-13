@@ -11,6 +11,7 @@ from amadeus import Client, ResponseError
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 import re
 import json
+from auth_calendar import authenticate_calendar
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -190,11 +191,25 @@ def search_hotels(destination: str) -> Dict[str, Union[List[Dict], str]]:
 # --- Main Agent --- #
 def trip_planner(request: str):
     """
-    Smart travel assistant that coordinates flight searches and hotel bookings.
+    Smart travel assistant that coordinates calendar availability checks, flight searches, and hotel bookings.
     Returns a JSON structure with the complete itinerary.
     """
-    # Initialize shared state
-    itinerary_state = ItineraryState()
+    # First make sure we're authenticated with Google Calendar
+    authenticated = authenticate_calendar()
+    if not authenticated:
+        return {"status": "error", "error": "Failed to authenticate with Google Calendar. Please run auth_calendar.py first."}
+    
+    # Initialize state
+    state = {
+        "dates": {"start": None, "end": None},
+        "destination": None,
+        "origin": None,
+        "flight": None,
+        "return_flight": None,
+        "hotel": None,
+        "total_cost": 0.0,
+        "status": "initial"
+    }
 
     calendar_agent = Agent(
         name="Calendar agent",
@@ -323,20 +338,16 @@ def trip_planner(request: str):
             if "Available dates:" in handoff_message:
                 dates_match = re.search(r"Available dates: (.*?) to (.*?),", handoff_message)
                 if dates_match:
-                    itinerary_state.update_state(agent_name, {
-                        "dates": {
-                            "start": dates_match.group(1),
-                            "end": dates_match.group(2)
-                        }
-                    })
+                    state["dates"] = {
+                        "start": dates_match.group(1),
+                        "end": dates_match.group(2)
+                    }
 
             # Extract destination
             if "Destination:" in handoff_message:
                 dest_match = re.search(r"Destination: (.*?)(?:\.|$)", handoff_message)
                 if dest_match:
-                    itinerary_state.update_state(agent_name, {
-                        "destination": dest_match.group(1).strip()
-                    })
+                    state["destination"] = dest_match.group(1).strip()
 
             # Extract flight details - improved regex to handle airline names with spaces
             if "Best flight:" in handoff_message:
@@ -352,15 +363,13 @@ def trip_planner(request: str):
                         airline = airline_flight
                         flight_number = ""
                     
-                    itinerary_state.update_state(agent_name, {
-                        "flight": {
-                            "airline": airline,
-                            "flight_number": flight_number,
-                            "departure": flight_match.group(2),
-                            "arrival": flight_match.group(3),
-                            "price": float(flight_match.group(4))
-                        }
-                    })
+                    state["flight"] = {
+                        "airline": airline,
+                        "flight_number": flight_number,
+                        "departure": flight_match.group(2),
+                        "arrival": flight_match.group(3),
+                        "price": float(flight_match.group(4))
+                    }
 
             # Extract hotel details - improved regex to handle empty addresses
             if "Best hotel:" in handoff_message:
@@ -370,20 +379,18 @@ def trip_planner(request: str):
                     price = float(hotel_match.group(2))
                     address = hotel_match.group(3).strip() if hotel_match.group(3) else "Address not available"
                     
-                    itinerary_state.update_state(agent_name, {
-                        "hotel": {
-                            "name": hotel_name,
-                            "price": price,
-                            "address": address
-                        }
-                    })
+                    state["hotel"] = {
+                        "name": hotel_name,
+                        "price": price,
+                        "address": address
+                    }
 
         except Exception as e:
             logger.error(f"Error updating state from handoff: {e}")
 
     while True:
         # Add current state to message
-        state_message = f"{message}\n\nCurrent Itinerary State:\n{json.dumps(itinerary_state.get_state(), indent=2)}"
+        state_message = f"{message}\n\nCurrent Itinerary State:\n{json.dumps(state, indent=2)}"
         
         result = Runner.run_sync(
             starting_agent=current_agent,
@@ -463,7 +470,7 @@ def trip_planner(request: str):
                     if activities:
                         plan_updates["activities"] = activities
                         
-                    itinerary_state.update_state(current_agent.name, plan_updates)
+                    state.update(plan_updates)
                 except Exception as e:
                     logger.error(f"Error updating final state: {e}")
             break
@@ -471,12 +478,164 @@ def trip_planner(request: str):
     # Compile and display the final plan
     final_plan = "\n\n".join([f"{entry['agent']}: {entry['response']}" for entry in conversation_history])
     print("\n=== FINAL PLAN ===\n", final_plan)
-    print("\n=== FINAL STATE ===\n", json.dumps(itinerary_state.get_state(), indent=2))
+    print("\n=== FINAL STATE ===\n", json.dumps(state, indent=2))
     
     # Return the itinerary state as a structured JSON instead of conversation history
-    return itinerary_state.get_state()
+    return state
+
+def fill_gaps(events: List[Dict]) -> List[Dict]:
+    """
+    Fill gaps in the itinerary with additional activities and attractions.
+    """
+    # This function is not provided in the original file or the new code block
+    # It's assumed to exist as it's called in the new pipeline function
+    pass
+
+def find_attractions(destination: str, num_attractions: int = 5) -> List[Dict]:
+    """Find top attractions for a destination"""
+    attractions_prompt = f"""
+    You are a travel expert with deep knowledge about tourist destinations worldwide.
+    
+    Please provide the top {num_attractions} attractions or activities in {destination} that tourists should visit.
+    
+    For each attraction, include:
+    1. Name of the attraction
+    2. Brief description (1-2 sentences)
+    3. Average time needed to visit (in hours)
+    4. Type (museum, landmark, park, restaurant, etc.)
+    5. Ideal time of day to visit (morning, afternoon, evening)
+    
+    Format your response as a JSON array of objects with these fields:
+    "name", "description", "visit_time", "type", "best_time"
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-0125",
+            messages=[
+                {"role": "system", "content": "You are a helpful travel assistant."},
+                {"role": "user", "content": attractions_prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        
+        attractions_json = response.choices[0].message.content
+        attractions = json.loads(attractions_json)
+        
+        if "attractions" in attractions:
+            return attractions["attractions"]
+        else:
+            return attractions.get("data", [])
+            
+    except Exception as e:
+        logger.error(f"Error finding attractions: {e}")
+        # Return some mock attractions if API fails
+        return [
+            {
+                "name": f"Popular Attraction in {destination}",
+                "description": "A must-visit landmark in the city.",
+                "visit_time": 2.0,
+                "type": "landmark",
+                "best_time": "morning"
+            },
+            {
+                "name": f"Famous Museum in {destination}",
+                "description": "World-class exhibits and collections.",
+                "visit_time": 3.0,
+                "type": "museum",
+                "best_time": "afternoon"
+            }
+        ]
+
+def suggest_restaurants(destination: str, cuisine_type: str = None, meal_type: str = "dinner") -> List[Dict]:
+    """Find top restaurants for a destination"""
+    cuisine_filter = f"that serve {cuisine_type} cuisine" if cuisine_type else "across various cuisines"
+    restaurant_prompt = f"""
+    You are a culinary expert with extensive knowledge of restaurants worldwide.
+    
+    Please provide 3 excellent {meal_type} restaurant recommendations in {destination} {cuisine_filter}.
+    
+    For each restaurant, include:
+    1. Name of the restaurant
+    2. Cuisine type
+    3. Brief description (1-2 sentences about what makes it special)
+    4. Price range ($ to $$$$)
+    5. Average dining time (in hours)
+    
+    Format your response as a JSON array of objects with these fields:
+    "name", "cuisine", "description", "price_range", "dining_time"
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-0125",
+            messages=[
+                {"role": "system", "content": "You are a helpful restaurant finder."},
+                {"role": "user", "content": restaurant_prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        
+        restaurants_json = response.choices[0].message.content
+        restaurants = json.loads(restaurants_json)
+        
+        if "restaurants" in restaurants:
+            return restaurants["restaurants"]
+        else:
+            return restaurants.get("data", [])
+            
+    except Exception as e:
+        logger.error(f"Error finding restaurants: {e}")
+        # Return some mock restaurants if API fails
+        return [
+            {
+                "name": f"Popular {meal_type.capitalize()} Spot in {destination}",
+                "cuisine": cuisine_type or "Local",
+                "description": "A highly-rated restaurant known for excellent food and service.",
+                "price_range": "$$$",
+                "dining_time": 1.5
+            }
+        ]
 
 # --- Test Cases --- #
+def pipeline(start_date=None, end_date=None, origin=None, destination=None):
+    """Run the complete travel planning pipeline with optional parameters"""
+    
+    # Set default parameters if not provided
+    if not start_date:
+        start_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+    if not end_date:
+        end_date = (datetime.strptime(start_date, '%Y-%m-%d') + timedelta(days=3)).strftime('%Y-%m-%d')
+    if not origin:
+        origin = "Indianapolis (IND Airport)"
+    if not destination:
+        destination = "New York City (JFK Airport)"
+    
+    # Construct a natural language request for the travel planner
+    request = f"Plan a trip from {origin} to {destination} starting on {start_date} ending on {end_date}, make sure it doesn't conflict with my calendar."
+    
+    # Get the basic travel plan
+    plan = trip_planner(request)
+    
+    # Enhance with attractions and detailed itinerary
+    events = plan["calendar_events"]
+    enhanced_events = fill_gaps(events)
+    
+    # Add the enhanced events to the plan
+    plan["enhanced_itinerary"] = enhanced_events
+    
+    # Add destination-specific attractions
+    dest_short = plan["travel_plan"]["destination"]
+    if dest_short:
+        clean_dest = dest_short.split("(")[0].strip()  # Extract city name without airport code
+        attractions = find_attractions(clean_dest)
+        restaurants = suggest_restaurants(clean_dest)
+        
+        plan["attractions"] = attractions
+        plan["restaurants"] = restaurants
+    
+    return plan
+
 if __name__ == "__main__":
     # Test 1: Simple travel planning
     print("=== TEST 1: BASIC TRIP PLANNING ===")

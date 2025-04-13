@@ -213,7 +213,7 @@ const getCityActivities = (city: string, timeOfDay: 'morning' | 'afternoon' | 'e
     return cityData[timeOfDay];
 };
 
-// Update the generateDailySchedule function to use specific times
+// Update the generateDailySchedule function to ensure all times use clock format
 const generateDailySchedule = (
     city: string,
     date: string,
@@ -224,38 +224,65 @@ const generateDailySchedule = (
 ): any[] => {
     const events = [];
 
+    // Helper to create a random time between two times
+    const randomTimeBetween = (start: string, end: string): string => {
+        const startHour = parseInt(start.split(':')[0]);
+        const startMin = parseInt(start.split(':')[1]);
+        const endHour = parseInt(end.split(':')[0]);
+        const endMin = parseInt(end.split(':')[1]);
+
+        const totalStartMins = startHour * 60 + startMin;
+        const totalEndMins = endHour * 60 + endMin;
+
+        if (totalEndMins <= totalStartMins) return start;
+
+        const randomMins = totalStartMins + Math.floor(Math.random() * (totalEndMins - totalStartMins));
+        const hour = Math.floor(randomMins / 60);
+        const mins = randomMins % 60;
+
+        return `${hour.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    };
+
     if (isFirstDay) {
         const arrivalTime = moment(flightArrival).format('HH:mm');
         const arrivalHour = parseInt(arrivalTime.split(':')[0]);
 
         if (arrivalHour < 12) {
             // Morning arrival - add afternoon and evening activities
-            const restaurants = getCityActivities(city, 'restaurants');
-            const lunch = restaurants.find(r => r.type === 'lunch');
-            if (lunch) {
-                events.push({
-                    type: 'meal',
-                    title: lunch.name,
-                    time: lunch.startTime,
-                    location: lunch.location,
-                    description: `Lunch at ${lunch.name}`,
-                    details: { type: 'lunch', duration: 1.5 },
-                    isLocked: false
-                });
-            }
-
-            const afternoonActivities = getCityActivities(city, 'afternoon');
-            const selectedAfternoon = afternoonActivities[Math.floor(Math.random() * afternoonActivities.length)];
+            // Add hotel check-in
             events.push({
-                type: 'activity',
-                title: selectedAfternoon.name,
-                time: selectedAfternoon.startTime,
-                location: selectedAfternoon.location,
-                description: `Visit ${selectedAfternoon.name}`,
-                details: { duration: selectedAfternoon.duration, type: 'sightseeing' },
+                type: 'accommodation',
+                title: 'Hotel Check-in',
+                time: '15:00',
+                location: 'Hotel Reception',
+                description: 'Check in to your hotel and freshen up',
+                details: { type: 'check-in', duration: 0.5 },
                 isLocked: false
             });
 
+            // Add an unpacking/freshen up activity
+            events.push({
+                type: 'activity',
+                title: 'Freshen Up & Unpack',
+                time: '15:30',
+                location: 'Your Hotel Room',
+                description: 'Take some time to unpack and relax after your arrival',
+                details: { duration: 1, type: 'personal' },
+                isLocked: false
+            });
+
+            // Add a short orientation walk
+            events.push({
+                type: 'activity',
+                title: `Quick ${city} Orientation Walk`,
+                time: '16:45',
+                location: 'Around Hotel Area',
+                description: 'Get familiar with the immediate surroundings of your hotel',
+                details: { duration: 1, type: 'orientation' },
+                isLocked: false
+            });
+
+            const restaurants = getCityActivities(city, 'restaurants');
             const dinner = restaurants.find(r => r.type === 'dinner');
             if (dinner) {
                 events.push({
@@ -282,6 +309,31 @@ const generateDailySchedule = (
             });
         } else if (arrivalHour < 16) {
             // Afternoon arrival - add evening activities
+            // Add hotel check-in
+            const checkInTime = randomTimeBetween(arrivalTime, '17:00');
+            const laterTime = moment(checkInTime, 'HH:mm').add(30, 'minutes').format('HH:mm');
+
+            events.push({
+                type: 'accommodation',
+                title: 'Hotel Check-in',
+                time: checkInTime,
+                location: 'Hotel Reception',
+                description: 'Check in to your hotel and freshen up',
+                details: { type: 'check-in', duration: 0.5 },
+                isLocked: false
+            });
+
+            // Add an unpacking/freshen up activity
+            events.push({
+                type: 'activity',
+                title: 'Freshen Up & Unpack',
+                time: laterTime,
+                location: 'Your Hotel Room',
+                description: 'Take some time to unpack and relax after your arrival',
+                details: { duration: 1, type: 'personal' },
+                isLocked: false
+            });
+
             const restaurants = getCityActivities(city, 'restaurants');
             const dinner = restaurants.find(r => r.type === 'dinner');
             if (dinner) {
@@ -307,17 +359,54 @@ const generateDailySchedule = (
                 details: { duration: selectedEvening.duration, type: 'entertainment' },
                 isLocked: false
             });
+        } else {
+            // Evening arrival - just add hotel check-in and a light activity
+            const checkInTime = randomTimeBetween(arrivalTime, '22:00');
+
+            events.push({
+                type: 'accommodation',
+                title: 'Hotel Check-in',
+                time: checkInTime,
+                location: 'Hotel Reception',
+                description: 'Check in to your hotel after arrival',
+                details: { type: 'check-in', duration: 0.5 },
+                isLocked: false
+            });
+
+            // Add a light late evening activity if not too late
+            if (parseInt(checkInTime.split(':')[0]) < 21) {
+                events.push({
+                    type: 'meal',
+                    title: 'Light Late Dinner',
+                    time: '21:30',
+                    location: 'Hotel Restaurant or Nearby',
+                    description: 'Grab a light meal before retiring for the night',
+                    details: { type: 'dinner', duration: 1 },
+                    isLocked: false
+                });
+            }
         }
     } else if (isLastDay) {
         const departureTime = moment(flightDeparture).format('HH:mm');
         const departureHour = parseInt(departureTime.split(':')[0]);
+
+        // Add hotel checkout
+        events.push({
+            type: 'accommodation',
+            title: 'Hotel Check-out',
+            time: '11:00',
+            location: 'Hotel Reception',
+            description: 'Check out of your hotel and store luggage if needed',
+            details: { type: 'check-out', duration: 0.5 },
+            isLocked: false
+        });
 
         if (departureHour > 19) {
             // Full day available
             events.push({
                 type: 'meal',
                 title: 'Breakfast at Hotel',
-                time: ACTIVITY_TIMES.BREAKFAST,
+                time: '08:30',
                 location: 'Hotel Restaurant',
                 description: 'Start your day with a delicious breakfast',
                 details: { type: 'breakfast', duration: 1 },
@@ -361,12 +450,34 @@ const generateDailySchedule = (
                 details: { duration: selectedAfternoon.duration, type: 'sightseeing' },
                 isLocked: false
             });
+
+            // Add a souvenir shopping opportunity
+            events.push({
+                type: 'activity',
+                title: 'Last-Minute Souvenir Shopping',
+                time: '16:30',
+                location: `${city} Shopping District`,
+                description: 'Grab some last-minute souvenirs before heading home',
+                details: { duration: 1, type: 'shopping' },
+                isLocked: false
+            });
+
+            // Add pre-flight meal
+            events.push({
+                type: 'meal',
+                title: 'Pre-Flight Dinner',
+                time: '18:00',
+                location: 'Near Airport',
+                description: 'Have a relaxed dinner before your flight',
+                details: { type: 'dinner', duration: 1.5 },
+                isLocked: false
+            });
         } else if (departureHour > 14) {
             // Morning only
             events.push({
                 type: 'meal',
                 title: 'Breakfast at Hotel',
-                time: ACTIVITY_TIMES.BREAKFAST,
+                time: '08:30',
                 location: 'Hotel Restaurant',
                 description: 'Start your day with a delicious breakfast',
                 details: { type: 'breakfast', duration: 1 },
@@ -384,13 +495,72 @@ const generateDailySchedule = (
                 details: { duration: selectedMorning.duration, type: 'cultural' },
                 isLocked: false
             });
+
+            // Add a quick souvenir shopping trip
+            events.push({
+                type: 'activity',
+                title: 'Quick Souvenir Shopping',
+                time: '11:30',
+                location: `${city} Shopping Area`,
+                description: 'Pick up some souvenirs before departure',
+                details: { duration: 1, type: 'shopping' },
+                isLocked: false
+            });
+
+            // Add pre-flight lunch
+            events.push({
+                type: 'meal',
+                title: 'Pre-Flight Lunch',
+                time: '12:30',
+                location: 'Near Airport',
+                description: 'Enjoy a final meal before your flight',
+                details: { type: 'lunch', duration: 1 },
+                isLocked: false
+            });
+        } else {
+            // Very early departure - just add breakfast
+            const earlyBreakfastTime = moment(departureTime, 'HH:mm').subtract(3, 'hours').format('HH:mm');
+
+            events.push({
+                type: 'meal',
+                title: 'Early Breakfast',
+                time: earlyBreakfastTime,
+                location: 'Hotel Restaurant',
+                description: 'Quick breakfast before your early departure',
+                details: { type: 'breakfast', duration: 0.5 },
+                isLocked: false
+            });
+
+            // Add preparation time
+            const prepTime = moment(departureTime, 'HH:mm').subtract(2, 'hours').format('HH:mm');
+
+            events.push({
+                type: 'activity',
+                title: 'Prepare for Departure',
+                time: prepTime,
+                location: 'Your Hotel Room',
+                description: 'Final packing and preparation for your flight',
+                details: { duration: 1, type: 'personal' },
+                isLocked: false
+            });
         }
     } else {
         // Full day schedule
+        // Hotel wakeup
+        events.push({
+            type: 'accommodation',
+            title: 'Wake Up at Hotel',
+            time: '07:00',
+            location: 'Your Hotel Room',
+            description: 'Start your day refreshed',
+            details: { type: 'accommodation', duration: 0.5 },
+            isLocked: false
+        });
+
         events.push({
             type: 'meal',
             title: 'Breakfast at Hotel',
-            time: ACTIVITY_TIMES.BREAKFAST,
+            time: '08:30',
             location: 'Hotel Restaurant',
             description: 'Start your day with a delicious breakfast',
             details: { type: 'breakfast', duration: 1 },
@@ -410,6 +580,18 @@ const generateDailySchedule = (
             isLocked: false
         });
 
+        // Add a coffee break
+        const coffeeTime = randomTimeBetween('10:30', '11:15');
+        events.push({
+            type: 'break',
+            title: 'Coffee Break',
+            time: coffeeTime,
+            location: 'Local Café',
+            description: 'Relax with a coffee and soak in the local atmosphere',
+            details: { type: 'break', duration: 0.5 },
+            isLocked: false
+        });
+
         // Filter out the first activity to avoid duplicates
         const remainingMorning = morningActivities.filter(a => a.name !== selectedMorning1.name);
         if (remainingMorning.length > 0) {
@@ -417,7 +599,7 @@ const generateDailySchedule = (
             events.push({
                 type: 'activity',
                 title: selectedMorning2.name,
-                time: ACTIVITY_TIMES.MORNING_2,
+                time: '11:30',
                 location: selectedMorning2.location,
                 description: `Explore ${selectedMorning2.name}`,
                 details: { duration: selectedMorning2.duration, type: 'cultural' },
@@ -440,13 +622,24 @@ const generateDailySchedule = (
             });
         }
 
+        // Add a rest period
+        events.push({
+            type: 'break',
+            title: 'Rest & Recharge',
+            time: '14:30',
+            location: 'Your Hotel or a Local Park',
+            description: 'Take some time to rest and recharge before afternoon activities',
+            details: { type: 'break', duration: 0.5 },
+            isLocked: false
+        });
+
         // Two afternoon activities
         const afternoonActivities = getCityActivities(city, 'afternoon');
         const selectedAfternoon1 = afternoonActivities[Math.floor(Math.random() * afternoonActivities.length)];
         events.push({
             type: 'activity',
             title: selectedAfternoon1.name,
-            time: selectedAfternoon1.startTime,
+            time: '15:15',
             location: selectedAfternoon1.location,
             description: `Visit ${selectedAfternoon1.name}`,
             details: { duration: selectedAfternoon1.duration, type: 'sightseeing' },
@@ -459,13 +652,24 @@ const generateDailySchedule = (
             events.push({
                 type: 'activity',
                 title: selectedAfternoon2.name,
-                time: ACTIVITY_TIMES.AFTERNOON_2,
+                time: '17:00',
                 location: selectedAfternoon2.location,
                 description: `Experience ${selectedAfternoon2.name}`,
                 details: { duration: selectedAfternoon2.duration, type: 'sightseeing' },
                 isLocked: false
             });
         }
+
+        // Pre-dinner drink or relaxation
+        events.push({
+            type: 'break',
+            title: 'Pre-Dinner Aperitif',
+            time: '18:30',
+            location: 'Local Bar or Café',
+            description: 'Enjoy a pre-dinner drink and relax',
+            details: { type: 'social', duration: 0.75 },
+            isLocked: false
+        });
 
         // Dinner at a local restaurant
         const dinner = restaurants.find(r => r.type === 'dinner');
@@ -491,6 +695,17 @@ const generateDailySchedule = (
             location: selectedEvening.location,
             description: `Experience ${selectedEvening.name}`,
             details: { duration: selectedEvening.duration, type: 'entertainment' },
+            isLocked: false
+        });
+
+        // Late night hotel return
+        events.push({
+            type: 'accommodation',
+            title: 'Return to Hotel',
+            time: '23:00',
+            location: 'Your Hotel',
+            description: 'Return to your hotel for a good night\'s rest',
+            details: { type: 'accommodation', duration: 0.25 },
             isLocked: false
         });
     }
@@ -613,6 +828,7 @@ export const generateItinerary = async (surveyData: SurveyData): Promise<Itinera
                     isLocked: true
                 });
 
+                // Add hotel check-in only here, and not in the generateDailySchedule for first day
                 events.push({
                     type: 'accommodation',
                     title: 'Hotel Check-in',
@@ -631,47 +847,67 @@ export const generateItinerary = async (surveyData: SurveyData): Promise<Itinera
                     isLocked: true
                 });
 
-                // Add activities based on arrival time
+                // Add activities based on arrival time, but exclude hotel check-in
                 const arrivalActivities = generateDailySchedule(
                     destination,
                     formattedDate,
                     true,
                     false,
                     flight.arrival
-                );
+                ).filter(event => event.type !== 'accommodation' || !event.title.includes('Check-in'));
+
                 events.push(...arrivalActivities);
             }
-            // Middle days - add hotel stay and activities
+            // Middle days - add activities but avoid duplicating hotel stays
             else if (i < tripDiffDays - 1) {
-                // Add hotel stay
-                events.push({
-                    type: 'accommodation',
-                    title: `Stay at ${hotel.name}`,
-                    time: '00:00',
-                    location: hotel.name,
-                    description: `Overnight stay at ${hotel.name}`,
-                    details: {
-                        hotelName: hotel.name,
-                        address: hotel.address,
-                        price: hotel.price,
-                        bookingLink: bookingLinks.hotelUrl,
-                        rating: hotel.rating || null,
-                        amenities: hotel.amenities || []
-                    },
-                    isLocked: true
-                });
-
-                // Generate full day schedule
+                // Generate full day schedule without hotel entries that will be duplicated
                 const dailyActivities = generateDailySchedule(
                     destination,
                     formattedDate,
                     false,
                     false
                 );
-                events.push(...dailyActivities);
+
+                // Keep one wake-up event but filter out duplicate hotel returns
+                let hasWakeupEvent = false;
+
+                const filteredActivities = dailyActivities.filter(event => {
+                    // Remove duplicate hotel return events
+                    if (event.title === 'Return to Hotel') {
+                        return false;
+                    }
+
+                    // Keep only one wakeup event
+                    if (event.title.includes('Wake Up at')) {
+                        if (hasWakeupEvent) {
+                            return false;
+                        }
+                        hasWakeupEvent = true;
+
+                        // Update the hotel details while we're at it
+                        event.location = hotel.name;
+                        event.description = `Start your day at ${hotel.name}`;
+                        event.details = {
+                            ...event.details,
+                            hotelName: hotel.name,
+                            address: hotel.address,
+                            price: hotel.price,
+                            bookingLink: bookingLinks.hotelUrl,
+                            rating: hotel.rating || null,
+                            amenities: hotel.amenities || []
+                        };
+
+                        return true;
+                    }
+
+                    return true;
+                });
+
+                events.push(...filteredActivities);
             }
             // Last day - add hotel check-out and return flight
             else {
+                // Add hotel checkout only here, not in the daily schedule
                 events.push({
                     type: 'accommodation',
                     title: 'Hotel Check-out',
@@ -722,7 +958,7 @@ export const generateItinerary = async (surveyData: SurveyData): Promise<Itinera
                     isLocked: true
                 });
 
-                // Add activities based on departure time
+                // Add activities based on departure time, but filter out hotel checkout duplication
                 const departureActivities = generateDailySchedule(
                     destination,
                     formattedDate,
@@ -730,7 +966,8 @@ export const generateItinerary = async (surveyData: SurveyData): Promise<Itinera
                     true,
                     null,
                     returnFlight.departure
-                );
+                ).filter(event => event.type !== 'accommodation' || !event.title.includes('Check-out'));
+
                 events.push(...departureActivities);
             }
 

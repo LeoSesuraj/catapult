@@ -6,86 +6,90 @@ import { FontFamily, Spacing, BorderRadius } from '../../constants/Theme';
 
 const { width } = Dimensions.get('window');
 
-// Add interface for component props
 interface LoadingScreenProps {
     message?: string;
     logs?: string[];
 }
 
 const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) => {
-    // Ref for loading dots
     const loadingDots = useRef('');
     const dotAnimationId = useRef<NodeJS.Timeout | null>(null);
 
     // Animated values
-    const planeXAnim = useRef(new Animated.Value(-50)).current; // Horizontal movement
-    const planeYAnim = useRef(new Animated.Value(0)).current; // Vertical movement
-    const planeRotateAnim = useRef(new Animated.Value(0)).current; // Rotation for more dynamic flight
+    const planeXAnim = useRef(new Animated.Value(-50)).current;
+    const planeYAnim = useRef(new Animated.Value(0)).current;
+    const planeRotateAnim = useRef(new Animated.Value(0)).current;
     const cloud1Anim = useRef(new Animated.Value(0)).current;
     const cloud2Anim = useRef(new Animated.Value(0)).current;
     const cloud3Anim = useRef(new Animated.Value(0)).current;
     const cloud4Anim = useRef(new Animated.Value(0)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
 
-    // Create a ref for the scroll view to auto-scroll to the bottom
+    // Scroll view ref
     const scrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
-        // Plane animation
+        // Plane animation - continuous looping
         const animatePlane = () => {
+            // Reset plane position to start
             planeXAnim.setValue(-50);
-            planeYAnim.setValue(0);
-            planeRotateAnim.setValue(0);
 
+            // Create realistic flight animation
             Animated.parallel([
-                // Horizontal: Left to right with smoother easing
+                // Horizontal: Left to right with natural easing
                 Animated.timing(planeXAnim, {
                     toValue: width + 50,
-                    duration: 6000, // Increased duration for smoother movement
-                    easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Smoother easing curve
+                    duration: 10000, // Slower for more natural flight
+                    easing: Easing.linear, // Linear for smooth continuous flight
                     useNativeDriver: true,
                 }),
-                // Vertical: Continuous smooth up-and-down
+
+                // Gentle vertical movement - subtle up and down
                 Animated.loop(
                     Animated.sequence([
                         Animated.timing(planeYAnim, {
-                            toValue: -15,
-                            duration: 1500,
+                            toValue: -8, // Reduced range for subtlety
+                            duration: 2000,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                         Animated.timing(planeYAnim, {
-                            toValue: 15,
-                            duration: 1500,
+                            toValue: 8, // Reduced range for subtlety
+                            duration: 2000,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                     ]),
-                    { iterations: 2 }
+                    { iterations: 5 } // Match with the horizontal movement
                 ),
-                // Enhanced rotation animation
+
+                // Natural rotation that follows the flight path
                 Animated.loop(
                     Animated.sequence([
                         Animated.timing(planeRotateAnim, {
-                            toValue: 8,
-                            duration: 1500,
+                            toValue: 5, // Reduced for subtlety
+                            duration: 2000,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                         Animated.timing(planeRotateAnim, {
-                            toValue: -8,
-                            duration: 1500,
+                            toValue: -5, // Reduced for subtlety
+                            duration: 2000,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                     ]),
-                    { iterations: 2 }
+                    { iterations: 5 }
                 ),
-            ]).start(() => animatePlane());
+            ]).start(() => {
+                // Loop animation continuously
+                animatePlane();
+            });
         };
+
         animatePlane();
 
-        // Enhanced cloud animations with different speeds and positions
+        // Cloud animations with different speeds
         const startCloudAnimation = (cloudAnim: Animated.Value, duration: number, delay: number = 0) => {
             Animated.loop(
                 Animated.sequence([
@@ -105,15 +109,15 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
             ).start();
         };
 
-        startCloudAnimation(cloud1Anim, 8000);
-        startCloudAnimation(cloud2Anim, 12000, 2000);
-        startCloudAnimation(cloud3Anim, 10000, 4000);
-        startCloudAnimation(cloud4Anim, 15000, 6000);
+        startCloudAnimation(cloud1Anim, 15000);
+        startCloudAnimation(cloud2Anim, 18000, 2000);
+        startCloudAnimation(cloud3Anim, 20000, 4000);
+        startCloudAnimation(cloud4Anim, 25000, 6000);
 
         // Progress animation
         Animated.timing(progressAnim, {
             toValue: 1,
-            duration: 5000,
+            duration: 8000,
             useNativeDriver: false,
         }).start();
 
@@ -129,27 +133,28 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
             }
             planeXAnim.stopAnimation();
             planeYAnim.stopAnimation();
+            planeRotateAnim.stopAnimation();
             cloud1Anim.stopAnimation();
             cloud2Anim.stopAnimation();
             cloud3Anim.stopAnimation();
             cloud4Anim.stopAnimation();
             progressAnim.stopAnimation();
         };
-    }, [planeXAnim, planeYAnim, cloud1Anim, cloud2Anim, cloud3Anim, cloud4Anim, progressAnim]);
+    }, [planeXAnim, planeYAnim, planeRotateAnim, cloud1Anim, cloud2Anim, cloud3Anim, cloud4Anim, progressAnim]);
 
     return (
         <View style={styles.container}>
-            <LinearGradient colors={['#1a202c', '#2d3748']} style={styles.gradient}>
+            <LinearGradient colors={['#0f172a', '#1e293b']} style={styles.gradient}>
                 <View style={styles.content}>
                     {/* Flight animation container */}
                     <View style={styles.animationContainer}>
                         <LinearGradient
-                            colors={['#2a4365', '#2c5282']}
+                            colors={['#203c71', '#2d56a3']}
                             style={styles.skyBackground}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 0, y: 1 }}
                         >
-                            {/* Stars */}
+                            {/* Simple stars */}
                             <View style={[styles.star, { top: '20%', left: '15%' }]} />
                             <View style={[styles.star, { top: '40%', left: '45%' }]} />
                             <View style={[styles.star, { top: '15%', right: '25%' }]} />
@@ -160,12 +165,10 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                             <View style={[styles.star, { top: '70%', left: '55%' }]} />
                         </LinearGradient>
 
-                        {/* Flight path */}
-                        <View style={styles.flightPath} />
-
                         {/* Clouds */}
                         <Animated.View
                             style={[
+                                styles.cloud,
                                 styles.cloud1,
                                 {
                                     transform: [
@@ -181,6 +184,7 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                         />
                         <Animated.View
                             style={[
+                                styles.cloud,
                                 styles.cloud2,
                                 {
                                     transform: [
@@ -196,6 +200,7 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                         />
                         <Animated.View
                             style={[
+                                styles.cloud,
                                 styles.cloud3,
                                 {
                                     transform: [
@@ -211,6 +216,7 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                         />
                         <Animated.View
                             style={[
+                                styles.cloud,
                                 styles.cloud4,
                                 {
                                     transform: [
@@ -274,7 +280,7 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                     {/* Agent progress logs */}
                     {logs.length > 0 && (
                         <View style={styles.logsContainer}>
-                            <Text style={styles.logsTitle}>Agent Progress:</Text>
+                            <Text style={styles.logsTitle}>Progress:</Text>
                             <ScrollView
                                 ref={scrollViewRef}
                                 style={styles.logsScrollView}
@@ -297,7 +303,7 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a202c',
+        backgroundColor: '#0f172a',
     },
     gradient: {
         flex: 1,
@@ -323,59 +329,44 @@ const styles = StyleSheet.create({
     },
     star: {
         position: 'absolute',
-        width: 3,
-        height: 3,
+        width: 2,
+        height: 2,
         backgroundColor: '#FFFFFF',
-        borderRadius: 1.5,
-        opacity: 0.7,
+        borderRadius: 1,
+        opacity: 0.6,
     },
-    flightPath: {
+    cloud: {
         position: 'absolute',
-        top: '45%', // Center between clouds
-        left: 0,
-        right: 0,
-        height: 1,
         backgroundColor: '#FFFFFF',
-        opacity: 0.2,
-        transform: [{ translateY: -0.5 }],
-    },
-    cloud1: {
-        position: 'absolute',
-        top: '30%',
-        width: 48,
-        height: 24,
-        backgroundColor: '#FFFFFF',
-        opacity: 0.3,
         borderRadius: 12,
     },
+    cloud1: {
+        top: '30%',
+        width: 60,
+        height: 25,
+        opacity: 0.3,
+    },
     cloud2: {
-        position: 'absolute',
         top: '60%',
-        width: 64,
+        width: 70,
         height: 20,
-        backgroundColor: '#FFFFFF',
         opacity: 0.2,
-        borderRadius: 10,
     },
     cloud3: {
-        position: 'absolute',
-        width: 60,
-        height: 30,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-        borderRadius: 15,
-        top: '35%',
+        top: '40%',
+        width: 50,
+        height: 20,
+        opacity: 0.25,
     },
     cloud4: {
-        position: 'absolute',
-        width: 70,
-        height: 35,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        borderRadius: 20,
-        top: '65%',
+        top: '70%',
+        width: 80,
+        height: 30,
+        opacity: 0.2,
     },
     plane: {
         position: 'absolute',
-        top: '45%', // Center between clouds
+        top: '45%',
         zIndex: 10,
     },
     planeIcon: {
@@ -387,13 +378,13 @@ const styles = StyleSheet.create({
     },
     progressTrack: {
         height: 4,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(167, 139, 250, 0.2)',
         borderRadius: 2,
         overflow: 'hidden',
     },
     progressBar: {
         height: '100%',
-        backgroundColor: '#3333ff',
+        backgroundColor: '#a78bfa',
     },
     loadingTextContainer: {
         width: '100%',
@@ -407,14 +398,16 @@ const styles = StyleSheet.create({
     },
     logsContainer: {
         marginTop: Spacing.md,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(30, 41, 59, 0.7)',
         borderRadius: BorderRadius.md,
         padding: Spacing.sm,
         maxHeight: 150,
         width: '90%',
+        borderWidth: 1,
+        borderColor: 'rgba(167, 139, 250, 0.3)',
     },
     logsTitle: {
-        color: '#FFFFFF',
+        color: '#d8b4fe',
         fontFamily: FontFamily.montserratMedium,
         fontSize: 14,
         marginBottom: Spacing.xs,
@@ -423,7 +416,7 @@ const styles = StyleSheet.create({
         maxHeight: 120,
     },
     logText: {
-        color: '#a0aec0',
+        color: '#cbd5e1',
         fontFamily: FontFamily.montserratRegular,
         fontSize: 12,
         marginBottom: 4,
