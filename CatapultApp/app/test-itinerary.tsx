@@ -622,12 +622,6 @@ export default function ItineraryScreen() {
                                 <View style={styles.headerRightContainer}>
                                     <TouchableOpacity
                                         style={styles.optionsButton}
-                                        onPress={() => setIsEditMode(!isEditMode)}
-                                    >
-                                        <Feather name={isEditMode ? "check" : "edit-2"} size={20} color={THEME.TEXT_PRIMARY} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.optionsButton}
                                         onPress={() => Alert.alert('Options', 'Share/Export coming soon')}
                                     >
                                         <Feather name="more-horizontal" size={24} color={THEME.TEXT_PRIMARY} />
@@ -658,14 +652,6 @@ export default function ItineraryScreen() {
                             </View>
                         </View>
 
-                        {/* Add Event Button */}
-                        <TouchableOpacity
-                            style={styles.addEventButton}
-                            onPress={handleAddEvent}
-                        >
-                            <Feather name="plus" size={24} color={THEME.TEXT_PRIMARY} />
-                        </TouchableOpacity>
-
                         <FlatList
                             data={days}
                             renderItem={renderDay}
@@ -675,7 +661,14 @@ export default function ItineraryScreen() {
                         />
                         <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                             <BlurView intensity={20} tint="dark" style={styles.modalOverlay}>
-                                <Animated.View style={[styles.modalContent, { transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] }]}>
+                                <Animated.View style={[styles.modalContent, {
+                                    transform: [{
+                                        translateY: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [1000, 0]
+                                        })
+                                    }]
+                                }]}>
                                     <LinearGradient colors={[THEME.BACKGROUND, THEME.BACKGROUND_LIGHTER]} style={styles.modalGradient}>
                                         <View style={styles.modalHeader}>
                                             <Text style={styles.modalTitle}>Event Details</Text>
@@ -688,74 +681,35 @@ export default function ItineraryScreen() {
                                                 <View style={styles.eventDetailsContainer}>
                                                     <View style={styles.eventTypeHeader}>
                                                         <FontAwesome
-                                                            name={getActivityIcon(editType)}
+                                                            name={getActivityIcon(selectedEvent.type)}
                                                             size={24}
-                                                            color={getActivityColor(editType)}
+                                                            color={getActivityColor(selectedEvent.type)}
                                                         />
                                                         <Text style={styles.eventTypeText}>
-                                                            {editType.charAt(0).toUpperCase() + editType.slice(1)}
+                                                            {selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
                                                         </Text>
                                                     </View>
-                                                    <TextInput
-                                                        style={styles.eventInput}
-                                                        value={editTitle}
-                                                        onChangeText={setEditTitle}
-                                                        placeholder="Title"
-                                                        placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                    />
+                                                    <Text style={styles.eventDetailTitle}>{selectedEvent.title}</Text>
+
                                                     <View style={styles.eventTimeRow}>
                                                         <Feather name="clock" size={16} color={THEME.TEXT_SECONDARY} />
-                                                        <TextInput
-                                                            style={[styles.eventInput, styles.eventInputInline]}
-                                                            value={editTime}
-                                                            onChangeText={setEditTime}
-                                                            placeholder="Time"
-                                                            placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                        />
+                                                        <Text style={styles.eventDetailText}>{selectedEvent.time}</Text>
                                                     </View>
-                                                    <View style={styles.eventLocationRow}>
-                                                        <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
-                                                        <TextInput
-                                                            style={[styles.eventInput, styles.eventInputInline]}
-                                                            value={editLocation}
-                                                            onChangeText={setEditLocation}
-                                                            placeholder="Location"
-                                                            placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                        />
-                                                    </View>
-                                                    <TextInput
-                                                        style={[styles.eventInput, styles.eventDescriptionInput]}
-                                                        value={editDescription}
-                                                        onChangeText={setEditDescription}
-                                                        placeholder="Description"
-                                                        placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                        multiline
-                                                    />
+
+                                                    {selectedEvent.location && (
+                                                        <View style={styles.eventLocationRow}>
+                                                            <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
+                                                            <Text style={styles.eventDetailText}>{selectedEvent.location}</Text>
+                                                        </View>
+                                                    )}
+
+                                                    {selectedEvent.description && (
+                                                        <Text style={styles.eventDetailDescription}>{selectedEvent.description}</Text>
+                                                    )}
                                                 </View>
                                                 <View style={styles.modalActions}>
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, styles.saveButton]}
-                                                        onPress={selectedEvent.id ? handleUpdateEvent : handleSaveNewEvent}
-                                                    >
-                                                        <Feather name="save" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                        <Text style={styles.actionButtonText}>Save Changes</Text>
-                                                    </TouchableOpacity>
                                                     {selectedEvent.id && (
                                                         <>
-                                                            <TouchableOpacity
-                                                                style={[styles.actionButton, styles.findAlternativeButton]}
-                                                                onPress={() => {
-                                                                    Alert.alert("Find Alternative", "Fetching suggestions...", [
-                                                                        {
-                                                                            text: "OK",
-                                                                            onPress: () => console.log("Calling GPT for alternatives..."),
-                                                                        },
-                                                                    ]);
-                                                                }}
-                                                            >
-                                                                <Feather name="refresh-cw" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                                <Text style={styles.actionButtonText}>Find Alternative</Text>
-                                                            </TouchableOpacity>
                                                             <TouchableOpacity
                                                                 style={[styles.actionButton, selectedEvent.isLocked ? styles.unlockButton : styles.lockButton]}
                                                                 onPress={() => {
@@ -775,11 +729,21 @@ export default function ItineraryScreen() {
                                                                 </Text>
                                                             </TouchableOpacity>
                                                             <TouchableOpacity
+                                                                style={[styles.actionButton, styles.editButton]}
+                                                                onPress={() => {
+                                                                    // Show edit mode - future implementation
+                                                                    Alert.alert("Edit Event", "Edit functionality coming soon");
+                                                                }}
+                                                            >
+                                                                <Feather name="edit" size={18} color="#fff" style={styles.actionButtonIcon} />
+                                                                <Text style={styles.actionButtonText}>Edit Event</Text>
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity
                                                                 style={[styles.actionButton, styles.deleteButton]}
-                                                                onPress={handleCancelEvent}
+                                                                onPress={handleDeleteEvent}
                                                             >
                                                                 <Feather name="trash-2" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                                <Text style={styles.actionButtonText}>Cancel Event</Text>
+                                                                <Text style={styles.actionButtonText}>Delete Event</Text>
                                                             </TouchableOpacity>
                                                         </>
                                                     )}
@@ -1017,6 +981,8 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         maxHeight: '80%',
         width: '100%',
+        position: 'absolute',
+        bottom: 0,
     },
     modalGradient: { padding: 20 },
     modalHeader: {
@@ -1043,22 +1009,32 @@ const styles = StyleSheet.create({
         color: THEME.TEXT_SECONDARY,
         marginLeft: 12,
     },
-    eventInput: {
+    eventDetailTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: THEME.TEXT_PRIMARY,
+        marginBottom: 16,
+    },
+    eventDetailText: {
         fontSize: 16,
         color: THEME.TEXT_PRIMARY,
-        backgroundColor: THEME.BACKGROUND_LIGHTER,
-        borderRadius: 8,
-        padding: 12,
+        marginLeft: 8,
+    },
+    eventDetailDescription: {
+        fontSize: 16,
+        color: THEME.TEXT_PRIMARY,
+        marginTop: 16,
+        lineHeight: 24,
+    },
+    eventTimeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: 12,
     },
-    eventInputInline: {
-        flex: 1,
-        marginLeft: 8,
-        padding: 8,
-    },
-    eventDescriptionInput: {
-        minHeight: 100,
-        textAlignVertical: 'top',
+    eventLocationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
     },
     modalActions: {
         marginTop: 24,
@@ -1082,6 +1058,7 @@ const styles = StyleSheet.create({
     findAlternativeButton: { backgroundColor: THEME.PRIMARY },
     lockButton: { backgroundColor: THEME.ACCENT },
     unlockButton: { backgroundColor: THEME.TEXT_TERTIARY },
+    editButton: { backgroundColor: THEME.PRIMARY },
     deleteButton: { backgroundColor: '#e53e3e' },
     flightCard: {
         flexDirection: 'row',
@@ -1155,30 +1132,4 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     flightIcon: { marginTop: 8 },
-    eventTimeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    eventLocationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    addEventButton: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        backgroundColor: THEME.PRIMARY,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 999,
-        ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
-            android: { elevation: 5 },
-        }),
-    },
 });

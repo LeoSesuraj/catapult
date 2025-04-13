@@ -69,7 +69,7 @@ export default function Departure() {
         Animated.sequence([
             Animated.timing(rotationAnim, {
                 toValue: 1,
-                duration: 4000, // Much slower - 4 seconds per rotation
+                duration: 40000, // Much slower - 40 seconds per rotation
                 useNativeDriver: true,
             }),
             Animated.timing(rotationAnim, {
