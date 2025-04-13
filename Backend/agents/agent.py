@@ -3,11 +3,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-agent = Agent(name="Assistant", instructions="You are a helpful assistant")
+main_agent = Agent(name="Assistant", instructions="You are a helpful assistant")
+flight_agent = Agent()
+hotel_agent = Agent()
+attraction_agent = Agent()
 
-result = Runner.run_sync(agent, "Write a haiku about recursion in programming.")
+result = Runner.run_sync(main_agent, "Write a haiku about recursion in programming.")
 print(result.final_output)
-
-# Code within the code,
-# Functions calling themselves,
-# Infinite loop's dance.
