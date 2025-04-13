@@ -1,64 +1,172 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Keyboard, ActivityIndicator, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontFamily, Spacing, BorderRadius, Shadow } from '../../constants/Theme';
 import { useSurvey } from './SurveyContext';
 import { CITIES } from '../data/cities';
+
+// Fuzzy search function
+const fuzzySearch = (query: string, city: string): number => {
+    query = query.toLowerCase();
+    city = city.toLowerCase();
+
+    if (city.startsWith(query)) return 2; // Highest priority for starts with
+    if (city.includes(query)) return 1; // Medium priority for includes
+
+    let score = 0;
+    let queryIndex = 0;
+
+    for (let i = 0; i < city.length && queryIndex < query.length; i++) {
+        if (city[i] === query[queryIndex]) {
+            score += 1;
+            queryIndex++;
+        }
+    }
+
+    return queryIndex === query.length ? score / city.length : 0;
+};
+
+// Group cities by region
+const GROUPED_CITIES = CITIES.reduce((acc, city) => {
+    const region = city.split(', ')[1] || 'Other';
+    if (!acc[region]) {
+        acc[region] = [];
+    }
+    acc[region].push(city);
+    return acc;
+}, {} as Record<string, string[]>);
 
 export default function Location() {
     const router = useRouter();
     const { updateSurveyData } = useSurvey();
     const [searchQuery, setSearchQuery] = useState('');
-    const [filteredCities, setFilteredCities] = useState<string[]>([]);
+    const [filteredCities, setFilteredCities] = useState<Array<{ city: string; score: number }>>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [recentSearches, setRecentSearches] = useState<string[]>([]);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    // Load recent searches
+    useEffect(() => {
+        const loadRecentSearches = async () => {
+            try {
+                const saved = await AsyncStorage.getItem('recentSearches');
+                if (saved) {
+                    setRecentSearches(JSON.parse(saved));
+                }
+            } catch (error) {
+                console.error('Error loading recent searches:', error);
+            }
+        };
+        loadRecentSearches();
+    }, []);
+
+    // Save recent search
+    const saveRecentSearch = async (city: string) => {
+        try {
+            const updatedSearches = [
+                city,
+                ...recentSearches.filter(s => s !== city)
+            ].slice(0, 5);
+            setRecentSearches(updatedSearches);
+            await AsyncStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
+        } catch (error) {
+            console.error('Error saving recent search:', error);
+        }
+    };
 
     useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+
         if (searchQuery.length > 0) {
-            const filtered = CITIES.filter(city =>
-                city.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            setFilteredCities(filtered);
-            setShowSuggestions(true);
+            setIsLoading(true);
+            timeoutId = setTimeout(() => {
+                const results = CITIES.map(city => ({
+                    city,
+                    score: fuzzySearch(searchQuery, city)
+                }))
+                    .filter(result => result.score > 0)
+                    .sort((a, b) => b.score - a.score);
+
+                setFilteredCities(results);
+                setShowSuggestions(true);
+                setIsLoading(false);
+
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true
+                }).start();
+            }, 300);
         } else {
             setFilteredCities([]);
             setShowSuggestions(false);
+            fadeAnim.setValue(0);
         }
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
     }, [searchQuery]);
 
-    const handleCitySelect = (city: string) => {
+    const handleCitySelect = async (city: string) => {
         setSearchQuery(city);
         setShowSuggestions(false);
         Keyboard.dismiss();
+        await saveRecentSearch(city);
 
-        // Automatically proceed after a brief delay
-        setTimeout(() => {
+        Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true
+        }).start(() => {
             updateSurveyData('destination', city);
             router.push('/survey/transport');
-        }, 300);
+        });
     };
 
     const handleBack = () => {
         router.back();
     };
 
-    const handleKeyPress = ({ nativeEvent }: { nativeEvent: { key: string } }) => {
-        if (nativeEvent.key === 'Enter' && filteredCities.length === 1) {
-            handleCitySelect(filteredCities[0]);
-        }
-    };
-
-    const renderCityItem = ({ item }: { item: string }) => (
+    const renderCityItem = ({ item }: { item: { city: string; score: number } }) => (
         <TouchableOpacity
-            style={styles.suggestionItem}
-            onPress={() => handleCitySelect(item)}
+            style={[styles.suggestionItem, { opacity: item.score > 1 ? 1 : 0.8 }]}
+            onPress={() => handleCitySelect(item.city)}
         >
             <FontAwesome name="map-marker" size={16} color="#4299E1" style={styles.suggestionIcon} />
-            <Text style={styles.suggestionText}>{item}</Text>
+            <View style={styles.suggestionTextContainer}>
+                <Text style={styles.suggestionText}>{item.city}</Text>
+                {item.city.includes(',') && (
+                    <Text style={styles.regionText}>{item.city.split(',')[1].trim()}</Text>
+                )}
+            </View>
         </TouchableOpacity>
     );
+
+    const renderRecentSearches = () => {
+        if (recentSearches.length === 0 || searchQuery.length > 0) return null;
+
+        return (
+            <View style={styles.recentSearchesContainer}>
+                <Text style={styles.recentSearchesTitle}>Recent Searches</Text>
+                {recentSearches.map((city, index) => (
+                    <TouchableOpacity
+                        key={index}
+                        style={styles.recentSearchItem}
+                        onPress={() => handleCitySelect(city)}
+                    >
+                        <FontAwesome name="history" size={16} color="#718096" style={styles.suggestionIcon} />
+                        <Text style={styles.recentSearchText}>{city}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -82,7 +190,11 @@ export default function Location() {
 
                         <View style={styles.searchContainer}>
                             <View style={styles.inputContainer}>
-                                <FontAwesome name="search" size={20} color="#4299E1" style={styles.searchIcon} />
+                                {isLoading ? (
+                                    <ActivityIndicator size="small" color="#4299E1" style={styles.searchIcon} />
+                                ) : (
+                                    <FontAwesome name="search" size={20} color="#4299E1" style={styles.searchIcon} />
+                                )}
                                 <TextInput
                                     style={styles.input}
                                     value={searchQuery}
@@ -90,7 +202,6 @@ export default function Location() {
                                     placeholder="Search for a city"
                                     placeholderTextColor="#718096"
                                     autoFocus
-                                    onKeyPress={handleKeyPress}
                                 />
                                 {searchQuery.length > 0 && (
                                     <TouchableOpacity
@@ -102,16 +213,23 @@ export default function Location() {
                                 )}
                             </View>
 
-                            {showSuggestions && (
-                                <View style={styles.suggestionsContainer}>
+                            <Animated.View
+                                style={[
+                                    styles.suggestionsContainer,
+                                    { opacity: fadeAnim }
+                                ]}
+                            >
+                                {showSuggestions ? (
                                     <FlatList
                                         data={filteredCities}
                                         renderItem={renderCityItem}
-                                        keyExtractor={item => item}
+                                        keyExtractor={item => item.city}
                                         keyboardShouldPersistTaps="handled"
                                     />
-                                </View>
-                            )}
+                                ) : (
+                                    renderRecentSearches()
+                                )}
+                            </Animated.View>
                         </View>
                     </View>
                 </SafeAreaView>
@@ -202,11 +320,41 @@ const styles = StyleSheet.create({
     suggestionIcon: {
         marginRight: Spacing.sm,
     },
+    suggestionTextContainer: {
+        flex: 1,
+    },
     suggestionText: {
         color: '#FFFFFF',
         fontSize: 16,
         fontFamily: FontFamily.montserratMedium,
         letterSpacing: 0.3,
+    },
+    regionText: {
+        color: '#718096',
+        fontSize: 12,
+        fontFamily: FontFamily.montserratRegular,
+        marginTop: 2,
+    },
+    recentSearchesContainer: {
+        padding: Spacing.md,
+    },
+    recentSearchesTitle: {
+        color: '#718096',
+        fontSize: 14,
+        fontFamily: FontFamily.montserratSemiBold,
+        marginBottom: Spacing.sm,
+    },
+    recentSearchItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.sm,
+        borderRadius: BorderRadius.md,
+    },
+    recentSearchText: {
+        color: '#A0AEC0',
+        fontSize: 14,
+        fontFamily: FontFamily.montserratMedium,
+        marginLeft: Spacing.sm,
     },
     destinationCard: {
         backgroundColor: '#BEE3F8',

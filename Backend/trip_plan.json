@@ -1,0 +1,105 @@
+{
+  "dates": {
+    "start": "2025-04-21",
+    "end": "2025-04-25"
+  },
+  "destination": "Philadelphia",
+  "origin": "Chicago",
+  "flight": {
+    "airline": "Delta",
+    "flight_number": "DL147",
+    "departure": "2025-04-21T12:45:00",
+    "arrival": "2025-04-21T14:30:00",
+    "price": 348.71,
+    "currency": "USD"
+  },
+  "hotel": {
+    "name": "RESIDENCE INN WILLOW MARRIOTT",
+    "price": 141.9,
+    "address": "Address not available",
+    "rating": 0,
+    "available": true
+  },
+  "activities": [
+    {
+      "day": 1,
+      "activities": [
+        {
+          "time": "Morning",
+          "name": "Sightseeing Tour in Philadelphia",
+          "description": "Guided tour of Philadelphia's main attractions",
+          "location": "Philadelphia Downtown",
+          "cost": 60.84
+        },
+        {
+          "time": "Afternoon",
+          "name": "Local Cuisine & Shopping in Philadelphia",
+          "description": "Sample the best food and shops in Philadelphia",
+          "location": "Philadelphia Market District",
+          "cost": 79.25
+        },
+        {
+          "time": "Evening",
+          "name": "Nightlife Experience in Philadelphia",
+          "description": "Experience Philadelphia after dark with dinner and entertainment",
+          "location": "Philadelphia Entertainment District",
+          "cost": 110.47
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "activities": [
+        {
+          "time": "Morning",
+          "name": "Sightseeing Tour in Philadelphia",
+          "description": "Guided tour of Philadelphia's main attractions",
+          "location": "Philadelphia Downtown",
+          "cost": 42.81
+        },
+        {
+          "time": "Afternoon",
+          "name": "Local Cuisine & Shopping in Philadelphia",
+          "description": "Sample the best food and shops in Philadelphia",
+          "location": "Philadelphia Market District",
+          "cost": 51.05
+        },
+        {
+          "time": "Evening",
+          "name": "Nightlife Experience in Philadelphia",
+          "description": "Experience Philadelphia after dark with dinner and entertainment",
+          "location": "Philadelphia Entertainment District",
+          "cost": 109.54
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "activities": [
+        {
+          "time": "Morning",
+          "name": "Sightseeing Tour in Philadelphia",
+          "description": "Guided tour of Philadelphia's main attractions",
+          "location": "Philadelphia Downtown",
+          "cost": 37.2
+        },
+        {
+          "time": "Afternoon",
+          "name": "Local Cuisine & Shopping in Philadelphia",
+          "description": "Sample the best food and shops in Philadelphia",
+          "location": "Philadelphia Market District",
+          "cost": 67.81
+        },
+        {
+          "time": "Evening",
+          "name": "Nightlife Experience in Philadelphia",
+          "description": "Experience Philadelphia after dark with dinner and entertainment",
+          "location": "Philadelphia Entertainment District",
+          "cost": 139.53
+        }
+      ]
+    }
+  ],
+  "total_cost": 916.31,
+  "status": "complete"
+}

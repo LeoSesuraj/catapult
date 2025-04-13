@@ -9,6 +9,7 @@ import { Colors } from '../../constants/Colors';
 import { FontFamily, Spacing, BorderRadius, Shadow } from '../../constants/Theme';
 import { saveTripData } from '../data/trips';
 import { generateSampleItinerary, storeItinerary } from '../data/itineraryStorage';
+import { generateItinerary, checkApiHealth } from '../utils/apiService';
 import LoadingScreen from '../components/LoadingScreen';
 import moment from 'moment';
 
@@ -16,6 +17,13 @@ export default function Itinerary() {
     const { surveyData, addTrip } = useSurvey();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('Generating your itinerary...');
+    const [progressLogs, setProgressLogs] = useState<string[]>([]);
+
+    // Function to add a log message
+    const addLogMessage = (message: string) => {
+        setProgressLogs(prevLogs => [...prevLogs, message]);
+    };
 
     const handleConfirmTrip = async () => {
         // Show confirmation dialog first
@@ -32,9 +40,19 @@ export default function Itinerary() {
                     onPress: async () => {
                         try {
                             setIsLoading(true);
+                            setProgressLogs([]);
+                            setLoadingMessage('Checking API connection...');
+                            addLogMessage('Starting itinerary generation...');
+                            addLogMessage(`Destination: ${surveyData.destination || 'Unknown'}`);
+
+                            // Check if API is available
+                            addLogMessage('Checking API health...');
+                            const isApiHealthy = await checkApiHealth();
+                            addLogMessage(isApiHealthy ? 'API connection successful' : 'API unavailable, will use mock data');
 
                             // Generate a unique trip ID
                             const tripId = Math.random().toString(36).substring(2, 9);
+                            addLogMessage('Generated trip ID: ' + tripId);
 
                             // 1. Create trip object for the trips list
                             const newTrip = {
@@ -48,6 +66,7 @@ export default function Itinerary() {
                             };
 
                             // 2. Save trip data
+                            addLogMessage('Saving trip data...');
                             const tripData = {
                                 id: tripId,
                                 reason_for_trip: (surveyData.tripType === 'Business' ? 'Business' : 'Personal') as 'Business' | 'Personal',
@@ -58,25 +77,68 @@ export default function Itinerary() {
                                 status: 'upcoming'
                             };
                             await saveTripData(tripData);
+                            addLogMessage('Trip data saved successfully');
 
                             // 3. Generate and store itinerary
-                            const sampleItinerary = generateSampleItinerary(
-                                surveyData.startDate || new Date().toISOString(),
-                                surveyData.endDate || new Date().toISOString(),
-                                surveyData.destination || 'Unknown'
-                            );
-                            await storeItinerary(sampleItinerary);
+                            let itinerary;
+
+                            if (isApiHealthy) {
+                                setLoadingMessage('Generating custom itinerary...');
+                                addLogMessage('Requesting flights from source to destination...');
+                                addLogMessage(`Origin: ${surveyData.departure || 'Unknown'}`);
+                                addLogMessage(`Searching hotel options in ${surveyData.destination}...`);
+
+                                try {
+                                    // Use our API to generate a real itinerary
+                                    addLogMessage('Calling backend API for itinerary generation...');
+                                    itinerary = await generateItinerary(surveyData);
+                                    addLogMessage('Successfully received itinerary data from API');
+                                } catch (error) {
+                                    console.error('API itinerary generation failed, using fallback:', error);
+                                    addLogMessage('Error generating itinerary from API: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                                    setLoadingMessage('API unavailable, generating backup itinerary...');
+                                    addLogMessage('Falling back to sample itinerary data');
+
+                                    // Fall back to sample itinerary if API fails
+                                    itinerary = generateSampleItinerary(
+                                        surveyData.startDate || new Date().toISOString(),
+                                        surveyData.endDate || new Date().toISOString(),
+                                        surveyData.destination || 'Unknown'
+                                    );
+                                }
+                            } else {
+                                setLoadingMessage('API unavailable, generating backup itinerary...');
+                                addLogMessage('Using sample itinerary generator');
+
+                                // Use sample itinerary if API is not available
+                                itinerary = generateSampleItinerary(
+                                    surveyData.startDate || new Date().toISOString(),
+                                    surveyData.endDate || new Date().toISOString(),
+                                    surveyData.destination || 'Unknown'
+                                );
+                                addLogMessage('Sample itinerary generated successfully');
+                            }
+
+                            // Store the itinerary
+                            addLogMessage('Storing itinerary in device storage...');
+                            await storeItinerary(itinerary);
+                            addLogMessage('Itinerary stored successfully');
 
                             // 4. Add trip to trips list in context
                             addTrip(newTrip);
+                            addLogMessage('Trip added to your trip list');
 
-                            // 5. Show loading for better UX
-                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            // 5. Show loading for a bit longer for better UX
+                            setLoadingMessage('Finalizing your itinerary...');
+                            addLogMessage('Preparing to display your itinerary');
+                            await new Promise(resolve => setTimeout(resolve, 1500));
 
                             // 6. Navigate to the itinerary view
-                            router.push('/test-itinerary');
+                            addLogMessage('Ready to view your itinerary!');
+                            router.push(`/itinerary?id=${tripId}`);
                         } catch (error) {
                             console.error('Error creating trip:', error);
+                            addLogMessage('Error creating trip: ' + (error instanceof Error ? error.message : 'Unknown error'));
                             Alert.alert(
                                 "Error",
                                 "Failed to create trip. Please try again.",
@@ -92,7 +154,7 @@ export default function Itinerary() {
     };
 
     if (isLoading) {
-        return <LoadingScreen />;
+        return <LoadingScreen message={loadingMessage} logs={progressLogs} />;
     }
 
     const formatDate = (dateString: string | null) => {

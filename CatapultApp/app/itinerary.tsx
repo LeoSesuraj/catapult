@@ -24,9 +24,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import { updateTripItinerary, TripData } from './data/trips';
 import { saveTripData, getTripData } from './utils/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAllTrips } from './utils/storage';
-import { useSurvey } from './survey/SurveyContext';
 
 // Extended event interface
 interface ExtendedItineraryEvent extends StoredItineraryEvent {
@@ -137,72 +134,127 @@ export default function ItineraryScreen() {
                 let itineraryData: Itinerary | null = null;
                 let tripData: TripData | null = null;
 
-                // If we have a trip ID, load that specific trip and its itinerary
                 if (id) {
                     const tripId = Array.isArray(id) ? id[0] : id;
                     tripData = await getTripData(tripId);
                     if (tripData?.itinerary) {
                         itineraryData = tripData.itinerary;
                     }
-                } else {
-                    // Otherwise load the default itinerary
+                }
+
+                if (!itineraryData) {
                     itineraryData = await getItinerary();
                 }
 
-                if (itineraryData) {
-                    setStoredItinerary(itineraryData);
-                    const convertedDays = itineraryData.itinerary.map((day: StoredItineraryDay, index: number) => {
-                        const formattedDate = day.date ? moment(day.date).format('ddd, MMM D') : `Day ${index + 1}`;
-                        return {
-                            id: `day${index + 1}`,
-                            date: formattedDate,
-                            rawDate: day.date,
-                            activities: day.events.map((event: ExtendedItineraryEvent, eventIndex: number) => {
-                                let mappedType: 'meal' | 'attraction' | 'transport' | 'accommodation' | 'free-time' = 'attraction';
-                                switch (event.type) {
-                                    case 'flight':
-                                    case 'transport':
-                                        mappedType = 'transport';
-                                        break;
-                                    case 'hotel':
-                                    case 'accommodation':
-                                        mappedType = 'accommodation';
-                                        break;
-                                    case 'meal':
-                                        mappedType = 'meal';
-                                        break;
-                                    case 'activity':
-                                    case 'attraction':
-                                        mappedType = 'attraction';
-                                        break;
-                                    case 'rest':
-                                    case 'free-time':
-                                        mappedType = 'free-time';
-                                        break;
-                                    default:
-                                        mappedType = 'attraction';
-                                }
-                                return {
-                                    id: `e${index + 1}-${eventIndex}`,
-                                    time: event.time,
-                                    title: event.title,
-                                    description: event.description,
-                                    location: event.location,
-                                    type: mappedType,
-                                    details: event.details,
-                                    isLocked: event.isLocked,
-                                };
-                            }).sort((a, b) => a.time.localeCompare(b.time)),
-                        };
-                    });
-                    setDays(convertedDays);
+                if (!itineraryData) {
+                    itineraryData = {
+                        itinerary: [
+                            {
+                                date: new Date().toISOString(),
+                                events: [
+                                    {
+                                        type: 'activity',
+                                        title: 'Sample Activity',
+                                        time: '09:00',
+                                        location: 'Sample Location',
+                                        description: 'This is a sample activity',
+                                        details: {},
+                                    },
+                                ],
+                            },
+                        ],
+                    };
                 }
+
+                const convertedDays = itineraryData.itinerary.map((day: StoredItineraryDay, index: number) => {
+                    const formattedDate = day.date ? moment(day.date).format('ddd, MMM D') : `Day ${index + 1}`;
+                    return {
+                        id: `day${index + 1}`,
+                        date: formattedDate,
+                        rawDate: day.date,
+                        activities: day.events.map((event: ExtendedItineraryEvent, eventIndex: number) => {
+                            let mappedType: 'meal' | 'attraction' | 'transport' | 'accommodation' | 'free-time' = 'attraction';
+                            switch (event.type) {
+                                case 'flight':
+                                case 'transport':
+                                    mappedType = 'transport';
+                                    break;
+                                case 'hotel':
+                                case 'accommodation':
+                                    mappedType = 'accommodation';
+                                    break;
+                                case 'meal':
+                                    mappedType = 'meal';
+                                    break;
+                                case 'activity':
+                                case 'attraction':
+                                    mappedType = 'attraction';
+                                    break;
+                                case 'rest':
+                                case 'free-time':
+                                    mappedType = 'free-time';
+                                    break;
+                                default:
+                                    mappedType = 'attraction';
+                            }
+                            return {
+                                id: `e${index + 1}-${eventIndex}`,
+                                time: event.time,
+                                title: event.title,
+                                description: event.description,
+                                location: event.location,
+                                type: mappedType,
+                                details: event.details,
+                                isLocked: event.isLocked,
+                            };
+                        }).sort((a, b) => a.time.localeCompare(b.time)),
+                    };
+                });
+
+                setStoredItinerary(itineraryData);
+                setDays(convertedDays);
 
                 if (tripData) {
                     setTrip(tripData);
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
+                const emptyItinerary = {
+                    itinerary: [
+                        {
+                            date: new Date().toISOString(),
+                            events: [
+                                {
+                                    type: 'activity',
+                                    title: 'Start Planning',
+                                    time: '09:00',
+                                    location: 'Your First Stop',
+                                    description: 'Begin your journey here',
+                                    details: {},
+                                },
+                            ],
+                        },
+                    ],
+                };
+                setStoredItinerary(emptyItinerary);
+                setDays([
+                    {
+                        id: 'day1',
+                        date: moment().format('ddd, MMM D'),
+                        rawDate: new Date().toISOString(),
+                        activities: [
+                            {
+                                id: 'e1-1',
+                                time: '09:00',
+                                title: 'Start Planning',
+                                description: 'Begin your journey here',
+                                location: 'Your First Stop',
+                                type: 'attraction',
+                                details: {},
+                            },
+                        ],
+                    },
+                ]);
             } finally {
                 setLoading(false);
             }
@@ -211,18 +263,18 @@ export default function ItineraryScreen() {
     }, [id]);
 
     useEffect(() => {
-        if (days.length > 0 && !activeDay) {
-            setActiveDay(days[0].id);
-        }
-    }, [days, activeDay]);
-
-    useEffect(() => {
         if (modalVisible) {
             Animated.spring(fadeAnim, { toValue: 1, useNativeDriver: true, damping: 15, stiffness: 100 }).start();
         } else {
             fadeAnim.setValue(0);
         }
     }, [modalVisible]);
+
+    useEffect(() => {
+        if (days.length > 0 && !activeDay) {
+            setActiveDay(days[0].id);
+        }
+    }, [days, activeDay]);
 
     const saveChangesToStorage = async (updatedDays: ItineraryDay[]) => {
         if (!storedItinerary) return;
@@ -243,69 +295,19 @@ export default function ItineraryScreen() {
                 })),
             };
 
-            // Store the updated itinerary
             await storeItinerary(updatedItinerary);
 
-            // If we have a trip ID, update that trip with the new itinerary
             if (id) {
                 const tripId = Array.isArray(id) ? id[0] : id;
                 await updateTripItinerary(tripId, updatedItinerary);
 
-                // Also update the trip data in storage
                 if (trip) {
                     const updatedTrip = {
                         ...trip,
-                        itinerary: updatedItinerary
+                        itinerary: updatedItinerary,
                     };
                     await saveTripData(updatedTrip);
                 }
-            } else {
-                // Create a new trip only if we're not already editing an existing one
-                // Create a trip location from the first event's location
-                const firstLocation = updatedItinerary.itinerary[0]?.events[0]?.location || 'New Trip';
-                const startDate = updatedItinerary.itinerary[0]?.date || new Date().toISOString();
-                const endDate = updatedItinerary.itinerary[updatedItinerary.itinerary.length - 1]?.date ||
-                    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-                // Format dates for the trip UI
-                const formattedDates = `${moment(startDate).format('MMM D')} - ${moment(endDate).format('MMM D, YYYY')}`;
-
-                // Create or update trip data
-                const tripData: TripData = {
-                    reason_for_trip: 'Personal',
-                    location: firstLocation,
-                    start_time: startDate,
-                    end_time: endDate,
-                    budget: 1000,
-                    itinerary: updatedItinerary
-                };
-
-                // Save the trip data and get the ID
-                const tripId = await saveTripData(tripData);
-                setTrip({
-                    ...tripData,
-                    id: tripId as string
-                } as TripData);
-
-                console.log("Trip saved with ID:", tripId);
-
-                // Show success message
-                Alert.alert(
-                    "Trip Saved",
-                    "Your trip has been saved successfully.",
-                    [
-                        {
-                            text: "View My Trips",
-                            onPress: () => {
-                                router.replace('/');
-                            }
-                        },
-                        {
-                            text: "Continue Editing",
-                            style: "cancel"
-                        }
-                    ]
-                );
             }
         } catch (error) {
             console.error("Failed to save changes:", error);
@@ -375,49 +377,6 @@ export default function ItineraryScreen() {
                 Alert.alert("Event Updated", "Event time was changed and schedule was reorganized.");
             }
         }
-    };
-
-    const handleAddEvent = () => {
-        if (days.length === 0) return;
-
-        const newEventActivity: ItineraryActivity = {
-            id: `e${Date.now()}`,
-            time: "12:00",
-            title: "New Event",
-            description: "Add description",
-            location: trip?.location || "",
-            type: 'attraction'
-        };
-
-        setSelectedEvent(newEventActivity);
-        setSelectedDayIndex(0);
-        setSelectedEventIndex(days[0].activities.length);
-        setEditTitle(newEventActivity.title);
-        setEditTime(newEventActivity.time);
-        setEditDescription(newEventActivity.description);
-        setEditLocation(newEventActivity.location || '');
-        setEditType(newEventActivity.type);
-        setModalVisible(true);
-    };
-
-    const handleSaveNewEvent = () => {
-        if (selectedDayIndex === null) return;
-
-        const newEvent: ItineraryActivity = {
-            id: `e${Date.now()}`,
-            time: editTime,
-            title: editTitle,
-            description: editDescription,
-            location: editLocation,
-            type: editType as any,
-        };
-
-        const updatedDays = [...days];
-        updatedDays[selectedDayIndex].activities.push(newEvent);
-        updatedDays[selectedDayIndex].activities.sort((a, b) => a.time.localeCompare(b.time));
-        setDays(updatedDays);
-        saveChangesToStorage(updatedDays);
-        setModalVisible(false);
     };
 
     const handleCancelEvent = () => {
@@ -491,7 +450,7 @@ export default function ItineraryScreen() {
             >
                 <View style={styles.timeContainer}>
                     <Text style={styles.timeText}>{item.time}</Text>
-                    {isFlight && <FontAwesome name="plane" size={14} color={THEME.TEXT_SECONDARY} style={styles.flightIcon} />}
+                    {isFlight && <Text style={styles.dayIndicator}>→</Text>}
                 </View>
                 <View style={[styles.activityContent, { borderLeftColor: getActivityColor(item.type) }]}>
                     <View style={styles.activityHeader}>
@@ -515,9 +474,19 @@ export default function ItineraryScreen() {
         <View style={styles.dayContainer}>
             <View style={styles.dayHeader}>
                 <Text style={styles.dayText}>{item.date}</Text>
-                <Text style={styles.eventCountText}>
-                    {item.activities.length} {item.activities.length === 1 ? 'event' : 'events'}
-                </Text>
+                <View style={styles.dayHeaderRight}>
+                    <Text style={styles.eventCountText}>
+                        {item.activities.length} {item.activities.length === 1 ? 'event' : 'events'}
+                    </Text>
+                    {isEditMode && (
+                        <TouchableOpacity
+                            style={styles.addEventButton}
+                            onPress={() => Alert.alert("Coming soon", "Add event functionality will be available soon")}
+                        >
+                            <Feather name="plus" size={16} color={THEME.PRIMARY} />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
             <View style={styles.activitiesContainer}>
                 <DraggableFlatList
@@ -532,7 +501,6 @@ export default function ItineraryScreen() {
                         })
                     }
                     onDragEnd={({ data }) => {
-                        setSelectedDayIndex(index);
                         const updatedDays = [...days];
                         updatedDays[index].activities = data;
                         setDays(updatedDays);
@@ -551,18 +519,33 @@ export default function ItineraryScreen() {
                 style={[styles.flightCard, isSelected && styles.flightCardSelected]}
                 onPress={() => selectFlight(item)}
             >
-                <View style={styles.flightInfo}>
-                    <Text style={styles.airlineName}>{item.airline} {item.flightNumber}</Text>
-                    <View style={styles.flightTimes}>
-                        <Text style={styles.flightTime}>{item.departure.time} {item.departure.airport}</Text>
-                        <FontAwesome name="long-arrow-right" size={16} color={THEME.TEXT_SECONDARY} />
-                        <Text style={styles.flightTime}>{item.arrival.time} {item.arrival.airport}</Text>
-                    </View>
-                    <Text style={styles.flightDetails}>
-                        {item.duration} • {item.stops === 0 ? 'Nonstop' : `${item.stops} stop${item.stops > 1 ? 's' : ''}`}
-                    </Text>
+                <View style={styles.flightHeader}>
+                    <Text style={styles.airlineName}>{item.airline}</Text>
+                    <Text style={styles.flightNumber}>{item.flightNumber}</Text>
                 </View>
-                <View style={styles.flightPriceContainer}>
+                <View style={styles.flightTimes}>
+                    <View style={styles.flightTimeColumn}>
+                        <Text style={styles.flightTimeLabel}>Departure</Text>
+                        <Text style={styles.flightTime}>{item.departure.time}</Text>
+                        <Text style={styles.flightAirport}>{item.departure.airport}</Text>
+                    </View>
+                    <View style={styles.flightDurationContainer}>
+                        <Text style={styles.flightDuration}>{item.duration}</Text>
+                        <View style={styles.flightPath}>
+                            <View style={styles.flightPathLine} />
+                            <FontAwesome name="plane" size={16} color={THEME.TEXT_SECONDARY} />
+                        </View>
+                        <Text style={styles.flightStops}>
+                            {item.stops === 0 ? 'Nonstop' : `${item.stops} stop${item.stops > 1 ? 's' : ''}`}
+                        </Text>
+                    </View>
+                    <View style={styles.flightTimeColumn}>
+                        <Text style={styles.flightTimeLabel}>Arrival</Text>
+                        <Text style={styles.flightTime}>{item.arrival.time}</Text>
+                        <Text style={styles.flightAirport}>{item.arrival.airport}</Text>
+                    </View>
+                </View>
+                <View style={styles.flightFooter}>
                     <Text style={styles.flightPrice}>{item.price}</Text>
                     <TouchableOpacity
                         style={[styles.selectFlightButton, isSelected && styles.selectedFlightButton]}
@@ -593,9 +576,7 @@ export default function ItineraryScreen() {
                         <Text style={styles.emptyText}>Create a trip to generate an itinerary</Text>
                         <TouchableOpacity
                             style={styles.createButton}
-                            onPress={() => {
-                                router.push('/survey');
-                            }}
+                            onPress={() => router.push('/survey')}
                         >
                             <Text style={styles.createButtonText}>Create Trip</Text>
                         </TouchableOpacity>
@@ -607,277 +588,219 @@ export default function ItineraryScreen() {
 
     return (
         <View style={styles.container}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-                <LinearGradient colors={[THEME.BACKGROUND, THEME.BACKGROUND_LIGHTER]} style={styles.gradient}>
-                    <SafeAreaView style={styles.safeArea}>
-                        <Stack.Screen options={{ headerShown: false }} />
-                        <View style={styles.tripHeader}>
-                            <View style={styles.headerRow}>
+            <SafeAreaView style={styles.safeArea}>
+                <Stack.Screen
+                    options={{
+                        title: 'Trip Itinerary',
+                        headerShown: true,
+                        headerLeft: () => (
+                            <TouchableOpacity
+                                onPress={() => router.replace('/')}
+                                style={styles.headerButton}
+                            >
+                                <Feather name="chevron-left" size={24} color={THEME.TEXT_PRIMARY} />
+                            </TouchableOpacity>
+                        ),
+                        headerRight: () => (
+                            <View style={styles.headerRightContainer}>
                                 <TouchableOpacity
-                                    onPress={() => {
-                                        router.replace('/');
-                                    }}
-                                    style={styles.backButton}
+                                    style={styles.headerButton}
+                                    onPress={() => setIsEditMode(!isEditMode)}
                                 >
-                                    <Feather name="chevron-left" size={24} color={THEME.TEXT_PRIMARY} />
-                                    <Text style={styles.backText}>Trips</Text>
+                                    <Feather name={isEditMode ? "check" : "edit-2"} size={20} color={THEME.TEXT_PRIMARY} />
                                 </TouchableOpacity>
-                                <View style={styles.headerRightContainer}>
-                                    <TouchableOpacity
-                                        style={styles.optionsButton}
-                                        onPress={() => setIsEditMode(!isEditMode)}
-                                    >
-                                        <Feather name={isEditMode ? "check" : "edit-2"} size={20} color={THEME.TEXT_PRIMARY} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.optionsButton}
-                                        onPress={() => Alert.alert('Options', 'Share/Export coming soon')}
-                                    >
-                                        <Feather name="more-horizontal" size={24} color={THEME.TEXT_PRIMARY} />
-                                    </TouchableOpacity>
-                                </View>
+                                <TouchableOpacity
+                                    style={styles.headerButton}
+                                    onPress={() => {
+                                        Alert.alert(
+                                            "Itinerary Options",
+                                            "What would you like to do?",
+                                            [
+                                                { text: "Share", onPress: () => console.log("Share pressed") },
+                                                { text: "Export", onPress: () => console.log("Export pressed") },
+                                                { text: "Cancel", style: "cancel" },
+                                            ]
+                                        );
+                                    }}
+                                >
+                                    <Feather name="more-horizontal" size={24} color={THEME.TEXT_PRIMARY} />
+                                </TouchableOpacity>
                             </View>
-                            <Text style={styles.tripTitle}>
-                                {trip?.location || storedItinerary.itinerary[0].events[0]?.location?.split(' → ')[1] || 'Trip Itinerary'}
-                            </Text>
-                            <Text style={styles.tripDates}>
-                                {trip ?
-                                    `${moment(trip.start_time).format('MMM D')} - ${moment(trip.end_time).format('MMM D, YYYY')}` :
-                                    (storedItinerary.itinerary[0].date &&
-                                        storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date
-                                        ? `${moment(storedItinerary.itinerary[0].date).format('MMM D')} - ${moment(storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date).format('MMM D, YYYY')}`
-                                        : '')
-                                }
-                            </Text>
-                            <View style={styles.tripStats}>
-                                <View style={styles.statTile}>
-                                    <Text style={styles.statValue}>{days.length}</Text>
-                                    <Text style={styles.statLabel}>Days</Text>
-                                </View>
-                                <View style={styles.statTile}>
-                                    <Text style={styles.statValue}>{days.reduce((sum, day) => sum + day.activities.length, 0)}</Text>
-                                    <Text style={styles.statLabel}>Events</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <FlatList
-                            data={days}
-                            renderItem={renderDay}
-                            keyExtractor={(item) => item.id}
-                            contentContainerStyle={styles.listContainer}
-                            showsVerticalScrollIndicator={true}
-                        />
-                        <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-                            <BlurView intensity={20} tint="dark" style={styles.modalOverlay}>
-                                <Animated.View style={[styles.modalContent, { transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] }]}>
-                                    <LinearGradient colors={[THEME.BACKGROUND, THEME.BACKGROUND_LIGHTER]} style={styles.modalGradient}>
-                                        <View style={styles.modalHeader}>
-                                            <Text style={styles.modalTitle}>Event Details</Text>
-                                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                                <Feather name="x" size={24} color={THEME.TEXT_PRIMARY} />
-                                            </TouchableOpacity>
-                                        </View>
-                                        {selectedEvent && (
-                                            <ScrollView style={styles.modalScrollView}>
-                                                <View style={styles.eventDetailsContainer}>
-                                                    <View style={styles.eventTypeHeader}>
-                                                        <FontAwesome
-                                                            name={getActivityIcon(editType)}
-                                                            size={24}
-                                                            color={getActivityColor(editType)}
-                                                        />
-                                                        <Text style={styles.eventTypeText}>
-                                                            {editType.charAt(0).toUpperCase() + editType.slice(1)}
-                                                        </Text>
-                                                    </View>
-                                                    <TextInput
-                                                        style={styles.eventInput}
-                                                        value={editTitle}
-                                                        onChangeText={setEditTitle}
-                                                        placeholder="Title"
-                                                        placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                    />
-                                                    <View style={styles.eventTimeRow}>
-                                                        <Feather name="clock" size={16} color={THEME.TEXT_SECONDARY} />
-                                                        <TextInput
-                                                            style={[styles.eventInput, styles.eventInputInline]}
-                                                            value={editTime}
-                                                            onChangeText={setEditTime}
-                                                            placeholder="Time"
-                                                            placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                        />
-                                                    </View>
-                                                    <View style={styles.eventLocationRow}>
-                                                        <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
-                                                        <TextInput
-                                                            style={[styles.eventInput, styles.eventInputInline]}
-                                                            value={editLocation}
-                                                            onChangeText={setEditLocation}
-                                                            placeholder="Location"
-                                                            placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                        />
-                                                    </View>
-                                                    <TextInput
-                                                        style={[styles.eventInput, styles.eventDescriptionInput]}
-                                                        value={editDescription}
-                                                        onChangeText={setEditDescription}
-                                                        placeholder="Description"
-                                                        placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                        multiline
-                                                    />
-                                                </View>
-                                                <View style={styles.modalActions}>
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, styles.saveButton]}
-                                                        onPress={selectedEvent.id ? handleUpdateEvent : handleSaveNewEvent}
-                                                    >
-                                                        <Feather name="save" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                        <Text style={styles.actionButtonText}>Save Changes</Text>
-                                                    </TouchableOpacity>
-                                                    {selectedEvent.id && (
-                                                        <>
-                                                            <TouchableOpacity
-                                                                style={[styles.actionButton, styles.findAlternativeButton]}
-                                                                onPress={() => {
-                                                                    Alert.alert("Find Alternative", "Fetching suggestions...", [
-                                                                        {
-                                                                            text: "OK",
-                                                                            onPress: () => console.log("Calling GPT for alternatives..."),
-                                                                        },
-                                                                    ]);
-                                                                }}
-                                                            >
-                                                                <Feather name="refresh-cw" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                                <Text style={styles.actionButtonText}>Find Alternative</Text>
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity
-                                                                style={[styles.actionButton, selectedEvent.isLocked ? styles.unlockButton : styles.lockButton]}
-                                                                onPress={() => {
-                                                                    if (selectedDayIndex !== null && selectedEventIndex !== null) {
-                                                                        toggleEventLock(selectedEvent.id, selectedDayIndex, selectedEventIndex);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <Feather
-                                                                    name={selectedEvent.isLocked ? "unlock" : "lock"}
-                                                                    size={18}
-                                                                    color="#fff"
-                                                                    style={styles.actionButtonIcon}
-                                                                />
-                                                                <Text style={styles.actionButtonText}>
-                                                                    {selectedEvent.isLocked ? "Unlock Event" : "Lock Event"}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity
-                                                                style={[styles.actionButton, styles.deleteButton]}
-                                                                onPress={handleCancelEvent}
-                                                            >
-                                                                <Feather name="trash-2" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                                <Text style={styles.actionButtonText}>Cancel Event</Text>
-                                                            </TouchableOpacity>
-                                                        </>
-                                                    )}
-                                                </View>
-                                            </ScrollView>
-                                        )}
-                                    </LinearGradient>
-                                </Animated.View>
-                            </BlurView>
-                        </Modal>
-                        <Modal animationType="fade" transparent visible={flightSelectionModalVisible} onRequestClose={() => setFlightSelectionModalVisible(false)}>
-                            <BlurView intensity={20} tint="dark" style={styles.modalOverlay}>
-                                <View style={styles.modalContent}>
+                        ),
+                    }}
+                />
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                    <View style={styles.headerContainer}>
+                        <Text style={styles.headerTitle}>
+                            {trip?.location || storedItinerary.itinerary[0].events[0]?.location?.split(' → ')[1] || 'Trip Itinerary'}
+                        </Text>
+                        <Text style={styles.headerSubtitle}>
+                            {trip
+                                ? `${moment(trip.start_time).format('MMM D')} - ${moment(trip.end_time).format('MMM D, YYYY')}`
+                                : storedItinerary.itinerary[0].date && storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date
+                                ? `${moment(storedItinerary.itinerary[0].date).format('MMM D')} - ${moment(storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date).format('MMM D, YYYY')}`
+                                : ''}
+                        </Text>
+                    </View>
+                    <FlatList
+                        data={days}
+                        renderItem={renderDay}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={styles.listContainer}
+                        showsVerticalScrollIndicator={true}
+                        initialNumToRender={7}
+                        maxToRenderPerBatch={10}
+                        windowSize={10}
+                    />
+                    <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+                        <BlurView intensity={20} tint="dark" style={styles.modalOverlay}>
+                            <Animated.View style={[styles.modalContent, {
+                                transform: [{
+                                    translateY: fadeAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [600, 0]
+                                    })
+                                }]
+                            }]}>
+                                <LinearGradient colors={[THEME.BACKGROUND, THEME.BACKGROUND_LIGHTER]} style={styles.modalGradient}>
                                     <View style={styles.modalHeader}>
-                                        <Text style={styles.modalTitle}>Select Flight</Text>
-                                        <TouchableOpacity onPress={() => setFlightSelectionModalVisible(false)}>
+                                        <Text style={styles.modalTitle}>Event Details</Text>
+                                        <TouchableOpacity onPress={() => setModalVisible(false)}>
                                             <Feather name="x" size={24} color={THEME.TEXT_PRIMARY} />
                                         </TouchableOpacity>
                                     </View>
-                                    <FlatList
-                                        data={availableFlights}
-                                        keyExtractor={(item) => item.id}
-                                        renderItem={renderFlightOption}
-                                        contentContainerStyle={styles.flightList}
-                                    />
-                                    <View style={styles.flightModalFooter}>
-                                        <Text style={styles.flightModalFooterText}>Flight selection updates itinerary automatically</Text>
-                                    </View>
+                                    <ScrollView style={styles.modalScrollView}>
+                                        <View style={styles.eventDetailsContainer}>
+                                            <View style={styles.eventTypeHeader}>
+                                                <FontAwesome
+                                                    name={getActivityIcon(editType)}
+                                                    size={24}
+                                                    color={getActivityColor(editType)}
+                                                />
+                                                <Text style={styles.eventTypeText}>
+                                                    {editType.charAt(0).toUpperCase() + editType.slice(1)}
+                                                </Text>
+                                            </View>
+                                            <TextInput
+                                                style={styles.eventInput}
+                                                value={editTitle}
+                                                onChangeText={setEditTitle}
+                                                placeholder="Title"
+                                                placeholderTextColor={THEME.TEXT_TERTIARY}
+                                            />
+                                            <View style={styles.eventTimeRow}>
+                                                <Feather name="clock" size={16} color={THEME.TEXT_SECONDARY} />
+                                                <TextInput
+                                                    style={[styles.eventInput, styles.eventInputInline]}
+                                                    value={editTime}
+                                                    onChangeText={setEditTime}
+                                                    placeholder="Time"
+                                                    placeholderTextColor={THEME.TEXT_TERTIARY}
+                                                />
+                                            </View>
+                                            <View style={styles.eventLocationRow}>
+                                                <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
+                                                <TextInput
+                                                    style={[styles.eventInput, styles.eventInputInline]}
+                                                    value={editLocation}
+                                                    onChangeText={setEditLocation}
+                                                    placeholder="Location"
+                                                    placeholderTextColor={THEME.TEXT_TERTIARY}
+                                                />
+                                            </View>
+                                            <TextInput
+                                                style={[styles.eventInput, styles.eventDescriptionInput]}
+                                                value={editDescription}
+                                                onChangeText={setEditDescription}
+                                                placeholder="Description"
+                                                placeholderTextColor={THEME.TEXT_TERTIARY}
+                                                multiline
+                                            />
+                                        </View>
+                                        <View style={styles.modalActions}>
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, styles.saveButton]}
+                                                onPress={handleUpdateEvent}
+                                            >
+                                                <Feather name="save" size={18} color="#fff" style={styles.actionButtonIcon} />
+                                                <Text style={styles.actionButtonText}>Save Changes</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, styles.findAlternativeButton]}
+                                                onPress={() => handleCancelEvent()}
+                                            >
+                                                <Feather name="refresh-cw" size={18} color="#fff" style={styles.actionButtonIcon} />
+                                                <Text style={styles.actionButtonText}>Find Alternative</Text>
+                                            </TouchableOpacity>
+                                            {selectedEvent && (
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, selectedEvent.isLocked ? styles.unlockButton : styles.lockButton]}
+                                                    onPress={() => {
+                                                        if (selectedDayIndex !== null && selectedEventIndex !== null) {
+                                                            toggleEventLock(selectedEvent.id, selectedDayIndex, selectedEventIndex);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Feather
+                                                        name={selectedEvent.isLocked ? "unlock" : "lock"}
+                                                        size={18}
+                                                        color="#fff"
+                                                        style={styles.actionButtonIcon}
+                                                    />
+                                                    <Text style={styles.actionButtonText}>
+                                                        {selectedEvent.isLocked ? "Unlock Event" : "Lock Event"}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            )}
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, styles.deleteButton]}
+                                                onPress={handleDeleteEvent}
+                                            >
+                                                <Feather name="trash-2" size={18} color="#fff" style={styles.actionButtonIcon} />
+                                                <Text style={styles.actionButtonText}>Delete Event</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </ScrollView>
+                                </LinearGradient>
+                            </Animated.View>
+                        </BlurView>
+                    </Modal>
+                    <Modal animationType="fade" transparent={true} visible={flightSelectionModalVisible} onRequestClose={() => setFlightSelectionModalVisible(false)}>
+                        <BlurView intensity={20} tint="dark" style={styles.modalOverlay}>
+                            <View style={styles.modalContent}>
+                                <View style={styles.modalHeader}>
+                                    <Text style={styles.modalTitle}>Select Flight</Text>
+                                    <TouchableOpacity onPress={() => setFlightSelectionModalVisible(false)}>
+                                        <Feather name="x" size={24} color={THEME.TEXT_PRIMARY} />
+                                    </TouchableOpacity>
                                 </View>
-                            </BlurView>
-                        </Modal>
-                    </SafeAreaView>
-                </LinearGradient>
-            </GestureHandlerRootView>
+                                <FlatList
+                                    data={availableFlights}
+                                    keyExtractor={(item) => item.id}
+                                    renderItem={renderFlightOption}
+                                    contentContainerStyle={styles.flightList}
+                                    showsVerticalScrollIndicator={true}
+                                />
+                                <View style={styles.flightModalFooter}>
+                                    <Text style={styles.flightModalFooterText}>Selecting a flight will update your itinerary automatically</Text>
+                                </View>
+                            </View>
+                        </BlurView>
+                    </Modal>
+                </GestureHandlerRootView>
+            </SafeAreaView>
         </View>
     );
 }
 
-// Styles
+// Styles (restored from TestItineraryScreen)
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    gradient: { flex: 1 },
-    safeArea: { flex: 1 },
-    tripHeader: {
-        padding: 16,
-        backgroundColor: THEME.CARD_BACKGROUND,
-        borderBottomWidth: 1,
-        borderBottomColor: THEME.BORDER,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    backButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 8,
-    },
-    backText: {
-        color: THEME.TEXT_PRIMARY,
-        fontSize: 16,
-        fontWeight: '500',
-        marginLeft: 4,
-    },
-    headerRightContainer: { flexDirection: 'row' },
-    optionsButton: { padding: 8 },
-    tripTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: THEME.TEXT_PRIMARY,
-        marginBottom: 8,
-    },
-    tripDates: {
-        fontSize: 16,
-        color: THEME.TEXT_SECONDARY,
-        marginBottom: 16,
-    },
-    tripStats: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        gap: 8,
-    },
-    statTile: {
+    container: {
         flex: 1,
-        backgroundColor: THEME.BACKGROUND_LIGHTER,
-        borderRadius: 8,
-        padding: 12,
-        alignItems: 'center',
-        ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-            android: { elevation: 2 },
-        }),
+        backgroundColor: THEME.BACKGROUND,
     },
-    statValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: THEME.TEXT_PRIMARY,
-    },
-    statLabel: {
-        fontSize: 12,
-        color: THEME.TEXT_SECONDARY,
+    safeArea: {
+        flex: 1,
     },
     loadingContainer: {
         flex: 1,
@@ -918,16 +841,37 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
+    headerButton: {
+        padding: 8,
+    },
+    headerContainer: {
+        marginBottom: 24,
+        padding: 16,
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: THEME.TEXT_PRIMARY,
+        marginBottom: 4,
+    },
+    headerSubtitle: {
+        fontSize: 16,
+        color: THEME.TEXT_SECONDARY,
+    },
     listContainer: {
         padding: 16,
         paddingBottom: 40,
     },
-    dayContainer: { marginBottom: 24 },
+    dayContainer: {
+        marginBottom: 24,
+    },
     dayHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: THEME.BORDER,
         marginBottom: 8,
     },
     dayText: {
@@ -939,34 +883,39 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: THEME.TEXT_TERTIARY,
     },
-    activitiesContainer: { flex: 1 },
+    activitiesContainer: {},
     activityItem: {
         flexDirection: 'row',
         backgroundColor: THEME.CARD_BACKGROUND,
         borderRadius: 12,
         marginBottom: 12,
+        overflow: 'hidden',
         borderWidth: 1,
         borderColor: THEME.CARD_BORDER,
         ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4 },
-            android: { elevation: 3 },
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 3,
+            },
         }),
-    },
-    activityItemLocked: {
-        borderColor: THEME.ACCENT,
-        borderWidth: 2,
     },
     timeContainer: {
         width: 70,
         padding: 12,
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         backgroundColor: THEME.BACKGROUND,
     },
     timeText: {
         fontSize: 14,
         fontWeight: '600',
         color: THEME.TEXT_SECONDARY,
+        textAlign: 'center',
     },
     activityContent: {
         flex: 1,
@@ -978,14 +927,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 6,
     },
-    activityIcon: { marginRight: 8 },
+    activityIcon: {
+        marginRight: 8,
+    },
     activityTitle: {
         flex: 1,
         fontSize: 16,
         fontWeight: '600',
         color: THEME.TEXT_PRIMARY,
     },
-    lockIcon: { marginLeft: 8 },
     locationRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1003,17 +953,21 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
         justifyContent: 'flex-end',
+        padding: 0,
     },
     modalContent: {
         backgroundColor: THEME.BACKGROUND,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
+        overflow: 'hidden',
         maxHeight: '80%',
         width: '100%',
     },
-    modalGradient: { padding: 20 },
+    modalGradient: {
+        padding: 20,
+    },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -1025,8 +979,9 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: THEME.TEXT_PRIMARY,
     },
-    modalScrollView: { flex: 1 },
-    eventDetailsContainer: { marginBottom: 24 },
+    eventDetailsContainer: {
+        marginBottom: 24,
+    },
     eventTypeHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1067,61 +1022,142 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         backgroundColor: THEME.PRIMARY,
     },
-    actionButtonIcon: { marginRight: 8 },
+    actionButtonIcon: {
+        marginRight: 8,
+    },
     actionButtonText: {
         fontSize: 16,
         fontWeight: '600',
         color: '#fff',
     },
-    saveButton: { backgroundColor: THEME.SECONDARY },
-    findAlternativeButton: { backgroundColor: THEME.PRIMARY },
-    lockButton: { backgroundColor: THEME.ACCENT },
-    unlockButton: { backgroundColor: THEME.TEXT_TERTIARY },
-    deleteButton: { backgroundColor: '#e53e3e' },
-    flightCard: {
+    saveButton: {
+        backgroundColor: THEME.SECONDARY,
+    },
+    findAlternativeButton: {
+        backgroundColor: THEME.PRIMARY,
+    },
+    lockButton: {
+        backgroundColor: THEME.ACCENT,
+    },
+    unlockButton: {
+        backgroundColor: THEME.TEXT_TERTIARY,
+    },
+    deleteButton: {
+        backgroundColor: '#e53e3e',
+    },
+    dayIndicator: {
+        fontSize: 12,
+        color: THEME.TEXT_TERTIARY,
+        marginTop: 2,
+    },
+    activityItemLocked: {
+        borderColor: THEME.ACCENT,
+        borderWidth: 2,
+    },
+    lockIcon: {
+        marginLeft: 8,
+    },
+    headerRightContainer: {
         flexDirection: 'row',
+    },
+    dayHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    addEventButton: {
+        marginLeft: 10,
+        padding: 4,
+    },
+    flightCard: {
         backgroundColor: THEME.CARD_BACKGROUND,
         borderRadius: 8,
-        padding: 12,
+        padding: 16,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: THEME.BORDER,
-        ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-            android: { elevation: 2 },
-        }),
     },
     flightCardSelected: {
         borderColor: THEME.PRIMARY,
         borderWidth: 2,
     },
-    flightInfo: { flex: 1 },
+    flightHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
     airlineName: {
         fontSize: 16,
         fontWeight: 'bold',
         color: THEME.TEXT_PRIMARY,
-        marginBottom: 4,
     },
-    flightTimes: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-        gap: 8,
-    },
-    flightTime: {
+    flightNumber: {
         fontSize: 14,
         color: THEME.TEXT_SECONDARY,
     },
-    flightDetails: {
+    flightTimes: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    flightTimeColumn: {
+        alignItems: 'center',
+    },
+    flightTimeLabel: {
         fontSize: 12,
         color: THEME.TEXT_TERTIARY,
+        marginBottom: 4,
     },
-    flightPriceContainer: {
-        alignItems: 'flex-end',
+    flightTime: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: THEME.TEXT_PRIMARY,
+    },
+    flightAirport: {
+        fontSize: 14,
+        color: THEME.TEXT_SECONDARY,
+    },
+    flightDurationContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+    },
+    flightDuration: {
+        fontSize: 14,
+        color: THEME.TEXT_SECONDARY,
+        marginBottom: 4,
+    },
+    flightPath: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        paddingHorizontal: 8,
+        position: 'relative',
+    },
+    flightPathLine: {
+        height: 1,
+        backgroundColor: THEME.TEXT_TERTIARY,
+        flex: 1,
+        position: 'absolute',
+        top: 8,
+        left: 0,
+        right: 0,
+    },
+    flightStops: {
+        fontSize: 12,
+        color: THEME.TEXT_TERTIARY,
+        marginTop: 4,
+    },
+    flightFooter: {
+        flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: THEME.BORDER,
     },
     flightPrice: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: 'bold',
         color: THEME.TEXT_PRIMARY,
     },
@@ -1130,15 +1166,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         backgroundColor: THEME.PRIMARY,
         borderRadius: 6,
-        marginTop: 8,
     },
-    selectedFlightButton: { backgroundColor: THEME.TEXT_TERTIARY },
+    selectedFlightButton: {
+        backgroundColor: THEME.TEXT_TERTIARY,
+    },
     selectFlightButtonText: {
         color: '#fff',
         fontWeight: '500',
-        fontSize: 14,
     },
-    flightList: { paddingBottom: 16 },
+    flightList: {
+        paddingBottom: 16,
+    },
     flightModalFooter: {
         paddingTop: 16,
         borderTopWidth: 1,
@@ -1149,15 +1187,7 @@ const styles = StyleSheet.create({
         color: THEME.TEXT_TERTIARY,
         textAlign: 'center',
     },
-    flightIcon: { marginTop: 8 },
-    eventTimeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    eventLocationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
+    modalScrollView: {
+        flex: 1,
     },
 });

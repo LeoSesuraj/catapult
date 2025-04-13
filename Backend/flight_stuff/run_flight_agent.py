@@ -41,7 +41,20 @@ PRIMARY_AIRPORTS = {
     "philadelphia": "PHL",
     "san francisco": "SFO",
     "dallas": "DFW",
-    "seattle": "SEA"
+    "seattle": "SEA",
+    "las vegas": "LAS",
+    "miami": "MIA",
+    "boston": "BOS",
+    "denver": "DEN",
+    "atlanta": "ATL",
+    "orlando": "MCO",
+    "phoenix": "PHX",
+    "san diego": "SAN",
+    "honolulu": "HNL",
+    "new orleans": "MSY",
+    "austin": "AUS",
+    "indianapolis": "IND",
+    "fort lauderdale": "FLL",
     # Add more as needed
 }
 
@@ -174,41 +187,36 @@ def get_real_time_flight_status(airline_code, flight_number, origin_code, depart
         logger.error(f"Unexpected error in get_real_time_flight_status: {str(e)}")
         return None
 
-def run_flight_agent(from_city_raw, to_city_raw, depart_date):
-    """
-    Main function to find the best flight between cities.
-    
-    Args:
-        from_city_raw: Origin city name
-        to_city_raw: Destination city name
-        depart_date: Departure date (YYYY-MM-DD)
-        
-    Returns:
-        Best flight found or None if no flights are found
-    """
-    logger.info(f"Starting flight search from {from_city_raw} to {to_city_raw} on {depart_date}")
+def run_flight_agent(origin, destination, date):
+    logging.info(f"Running flight agent: {origin} to {destination} on {date}")
     
     # Convert city names to IATA codes
-    from_city = city_to_iata(from_city_raw)
-    to_city = city_to_iata(to_city_raw)
-
-    if from_city == "unknown" or to_city == "unknown":
-        logger.error(f"Unable to find IATA code for: {from_city_raw if from_city == 'unknown' else ''} "
-                    f"or {to_city_raw if to_city == 'unknown' else ''}")
-        return None  # Return None to indicate failure
-
-    logger.info(f"🔍 Searching flights from {from_city} to {to_city} on {depart_date}...")
-    flights = search_flights(from_city, to_city, depart_date)
+    origin_iata = city_to_iata(origin.lower())
+    if origin_iata == "unknown":
+        logging.error(f"Could not find IATA code for origin: {origin}")
+        return None
+        
+    destination_iata = city_to_iata(destination.lower())
+    if destination_iata == "unknown":
+        logging.error(f"Could not find IATA code for destination: {destination}")
+        return None
     
-    if not flights:
-        logger.warning("No flights found.")
-        return None  # Return None if no flights are found
-
-    best_flight = select_best_flight(flights)
-    if best_flight:
-        logger.info("Best flight found:")
-        logger.info(json.dumps(best_flight, indent=2))
+    logging.info(f"Converted cities to IATA: {origin} -> {origin_iata}, {destination} -> {destination_iata}")
+    
+    try:
+        # Search for flights
+        flights = search_flights(origin_iata, destination_iata, date)
+        if not flights:
+            logging.warning(f"No flights found from {origin_iata} to {destination_iata} on {date}")
+            return None
+            
+        logging.info(f"Found {len(flights)} flights")
+        
+        # Select the best flight (lowest price for now)
+        best_flight = min(flights, key=lambda x: float(x["price"]))
+        logging.info(f"Best flight found:\n{json.dumps(best_flight, indent=2)}")
+        
         return best_flight
-    else:
-        logger.warning("No best flight selected.")
+    except Exception as e:
+        logging.error(f"Error finding flights: {str(e)}")
         return None

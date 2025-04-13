@@ -1,12 +1,18 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, Dimensions, Easing } from 'react-native';
+import { View, Text, Animated, StyleSheet, Dimensions, Easing, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { FontFamily, Spacing, BorderRadius } from '../../constants/Theme';
 
 const { width } = Dimensions.get('window');
 
-const LoadingScreen = () => {
+// Add interface for component props
+interface LoadingScreenProps {
+    message?: string;
+    logs?: string[];
+}
+
+const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) => {
     // Ref for loading dots
     const loadingDots = useRef('');
     const dotAnimationId = useRef<NodeJS.Timeout | null>(null);
@@ -18,6 +24,9 @@ const LoadingScreen = () => {
     const cloud1Anim = useRef(new Animated.Value(0)).current;
     const cloud2Anim = useRef(new Animated.Value(0)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
+
+    // Create a ref for the scroll view to auto-scroll to the bottom
+    const scrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
         // Plane animation
@@ -228,9 +237,29 @@ const LoadingScreen = () => {
                     </View>
 
                     {/* Loading text */}
-                    <Text style={styles.loadingText}>
-                        Preparing Your Journey{loadingDots.current}
-                    </Text>
+                    <View style={styles.loadingTextContainer}>
+                        <Text style={styles.loadingText}>
+                            {message}{loadingDots.current}
+                        </Text>
+                    </View>
+
+                    {/* Agent progress logs */}
+                    {logs.length > 0 && (
+                        <View style={styles.logsContainer}>
+                            <Text style={styles.logsTitle}>Agent Progress:</Text>
+                            <ScrollView
+                                ref={scrollViewRef}
+                                style={styles.logsScrollView}
+                                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                            >
+                                {logs.map((log, index) => (
+                                    <Text key={index} style={styles.logText}>
+                                        {log}
+                                    </Text>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
                 </View>
             </LinearGradient>
         </View>
@@ -322,11 +351,38 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: '#3333ff',
     },
+    loadingTextContainer: {
+        width: '100%',
+        marginBottom: 32,
+    },
     loadingText: {
         fontSize: 18,
         fontFamily: FontFamily.montserratSemiBold,
         color: '#FFFFFF',
         textAlign: 'center',
+    },
+    logsContainer: {
+        marginTop: Spacing.md,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        borderRadius: BorderRadius.md,
+        padding: Spacing.sm,
+        maxHeight: 150,
+        width: '90%',
+    },
+    logsTitle: {
+        color: '#FFFFFF',
+        fontFamily: FontFamily.montserratMedium,
+        fontSize: 14,
+        marginBottom: Spacing.xs,
+    },
+    logsScrollView: {
+        maxHeight: 120,
+    },
+    logText: {
+        color: '#a0aec0',
+        fontFamily: FontFamily.montserratRegular,
+        fontSize: 12,
+        marginBottom: 4,
     },
 });
 

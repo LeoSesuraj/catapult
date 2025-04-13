@@ -27,7 +27,8 @@ class ItineraryState:
             "hotel": None,
             "total_cost": 0.0,
             "status": "initial",
-            "calendar_events": []  # Add calendar events to state
+            "calendar_events": [],  # Add calendar events to state
+            "activities": []  # Add activities to state
         }
 
     def get_state(self) -> Dict:
@@ -74,15 +75,15 @@ class ItineraryState:
 def list_google_calendars() -> Dict[str, List[Dict]]:
     """
     Lists all available Google Calendars the user has access to.
+    This is a mock version that doesn't require OAuth.
     """
-    try:
-        service = calendar_code.get_calendar_service()
-        if not service:
-            return {"status": "error", "error": "Failed to authenticate with Google Calendar"}
-        calendar_list = calendar_code.list_all_calendars(service)
-        return {"status": "success", "calendars": calendar_list}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
+    # Return mock calendar data
+    return {
+        "status": "success", 
+        "calendars": [
+            {"id": "primary", "summary": "Primary Calendar", "primary": True}
+        ]
+    }
 
 @function_tool
 def get_calendar_events_tool(
@@ -91,20 +92,10 @@ def get_calendar_events_tool(
     calendar_id: Optional[str] = None
 ) -> Dict[str, Union[List[Dict], str]]:
     """
-    Fetches events from Google Calendar for specified date range.
+    Mock version of calendar events fetch that doesn't require OAuth.
     """
-    try:
-        events_data = calendar_code.get_calendar_events(start_date, end_date, calendar_id)
-        if isinstance(events_data, dict) and "error" in events_data:
-            return {"status": "error", "error": events_data["error"]}
-        
-        # Store events in the state
-        if isinstance(events_data, list):
-            itinerary_state.add_calendar_events(events_data)
-            
-        return {"status": "success", "data": events_data}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
+    # Return empty events list - no conflicts
+    return {"status": "success", "data": []}
 
 # --- Travel Planning Tools --- #
 @function_tool
@@ -199,7 +190,8 @@ def search_hotels(destination: str) -> Dict[str, Union[List[Dict], str]]:
 # --- Main Agent --- #
 def trip_planner(request: str):
     """
-    Smart travel assistant that coordinates calendar availability checks, flight searches, and hotel bookings.
+    Smart travel assistant that coordinates flight searches and hotel bookings.
+    Returns a JSON structure with the complete itinerary.
     """
     # Initialize shared state
     itinerary_state = ItineraryState()
@@ -208,16 +200,13 @@ def trip_planner(request: str):
         name="Calendar agent",
         instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
 
-        CONTINUE UNTIL YOU INTEGRATE ALL OF THE CALENDAR WITHIN THE TIMEFRAME.
-
-        You are a calendar specialist. Your job is to check the user's calendar for availability.
+        You are a calendar and travel date specialist. Your job is to determine suitable travel dates.
 
         Steps:
         1. Extract the destination and preferred dates from the request. If no dates are provided, suggest the next upcoming weekend.
-        2. List available calendars using list_google_calendars.
-        3. Get events within the requested or suggested date range using get_calendar_events_tool.
-        4. Identify free periods suitable for travel (e.g., a weekend or week-long period).
-        5. ALWAYS hand off to the Flights agent using EXACTLY this format:
+        2. If dates are provided, use those directly since we're not checking for conflicts.
+        3. If dates are not provided, suggest reasonable default dates.
+        4. ALWAYS hand off to the Flights agent using EXACTLY this format:
            "<handoff to='Flights agent'>Available dates: [START_DATE] to [END_DATE], Destination: [DESTINATION]. Please find flights.</handoff>"
 
         DO NOT search for flights or hotels yourself.
@@ -284,13 +273,14 @@ def trip_planner(request: str):
 
         Process:
         1. Start by IMMEDIATELY handing off to the Calendar agent using EXACTLY this format:
-           "<handoff to='Calendar agent'>Please check calendar availability for: {request}</handoff>"
-        2. When you receive a handoff from the Hotels agent, extract the details and update the itinerary state:
-           - Update dates
-           - Update flight details
-           - Update hotel details
-           - Calculate total cost (flight price + hotel price * number of nights)
-        3. Format and return the final plan.
+           "<handoff to='Calendar agent'>Please determine travel dates for: {request}</handoff>"
+        2. When you receive a handoff from the Hotels agent, extract the details and update the itinerary state.
+        3. Based on the destination, create a detailed itinerary with:
+           - Flight details (already provided)
+           - Hotel details (already provided)
+           - Daily activities broken down by day and time (morning, afternoon, evening)
+           - Each activity should include: name, brief description, location, and estimated cost if applicable
+        4. Format and return the final plan.
 
         Format the final plan like:
         "Here's your travel plan:
@@ -299,19 +289,20 @@ def trip_planner(request: str):
         - Hotel: [HOTEL_NAME], $[HOTEL_PRICE]/night, [HOTEL_ADDRESS]
         - Total estimated cost: $[TOTAL_COST]
         
-        Your calendar events during this period:
-        [LIST OF CALENDAR EVENTS]"
-
-        Example: "Here's your travel plan:
-        - Dates: 2025-04-19 to 2025-04-20
-        - Flight: Test Airline TA123, Dep: 2025-04-19T10:00, Arr: 2025-04-19T12:00, $199.99
-        - Hotel: Unknown Hotel, $150/night, Chicago, IL, USA
-        - Total estimated cost: $349.99
-        
-        Your calendar events during this period:
-        - April 19, 2025: 2:30 PM - 3:15 PM: Meeting
-        - April 20, 2025: 4:15 PM - 6:45 PM: Team Call""
-        """
+        Suggested activities:
+        - Day 1: 
+          * Morning: [ACTIVITY1_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+          * Afternoon: [ACTIVITY2_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+          * Evening: [ACTIVITY3_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+        - Day 2: 
+          * Morning: [ACTIVITY1_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+          * Afternoon: [ACTIVITY2_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+          * Evening: [ACTIVITY3_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+        - Day 3: 
+          * Morning: [ACTIVITY1_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+          * Afternoon: [ACTIVITY2_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]
+          * Evening: [ACTIVITY3_NAME] - [SHORT_DESCRIPTION] at [LOCATION], Cost: $[COST]"
+        """,
     )
     
     # Set handoff relationships
@@ -435,6 +426,43 @@ def trip_planner(request: str):
                     plan_updates = {
                         "status": "complete"
                     }
+                    
+                    # Extract suggested activities if present in the response
+                    activities = []
+                    
+                    # Look for the section with activities
+                    activity_section = re.search(r"Suggested activities:(.*?)$", response, re.DOTALL)
+                    if activity_section:
+                        activity_text = activity_section.group(1).strip()
+                        
+                        # Extract each day's activities
+                        day_sections = re.findall(r"- Day (\d+):(.*?)(?=- Day \d+:|$)", activity_text, re.DOTALL)
+                        
+                        for day_num, day_content in day_sections:
+                            day_activities = {
+                                "day": int(day_num),
+                                "activities": []
+                            }
+                            
+                            # Extract morning, afternoon, evening activities
+                            time_slots = re.findall(r"\* (Morning|Afternoon|Evening): ([^-]+) - ([^,]+) at ([^,]+), Cost: \$([\d.]+)", day_content)
+                            
+                            for slot in time_slots:
+                                if len(slot) >= 5:
+                                    time_of_day, name, description, location, cost = slot
+                                    day_activities["activities"].append({
+                                        "time": time_of_day.strip(),
+                                        "name": name.strip(),
+                                        "description": description.strip(),
+                                        "location": location.strip(),
+                                        "cost": float(cost.strip())
+                                    })
+                            
+                            activities.append(day_activities)
+                    
+                    if activities:
+                        plan_updates["activities"] = activities
+                        
                     itinerary_state.update_state(current_agent.name, plan_updates)
                 except Exception as e:
                     logger.error(f"Error updating final state: {e}")
@@ -444,7 +472,9 @@ def trip_planner(request: str):
     final_plan = "\n\n".join([f"{entry['agent']}: {entry['response']}" for entry in conversation_history])
     print("\n=== FINAL PLAN ===\n", final_plan)
     print("\n=== FINAL STATE ===\n", json.dumps(itinerary_state.get_state(), indent=2))
-    return final_plan
+    
+    # Return the itinerary state as a structured JSON instead of conversation history
+    return itinerary_state.get_state()
 
 # --- Test Cases --- #
 if __name__ == "__main__":

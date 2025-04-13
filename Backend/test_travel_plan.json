@@ -1,0 +1,19 @@
+{
+  "status": "initial",
+  "plan": {
+    "destination": null,
+    "dates": {
+      "start": null,
+      "end": null
+    },
+    "flight": null,
+    "hotel": null,
+    "total_cost": 0.0
+  },
+  "history": [
+    {
+      "agent": "TravelAssistant",
+      "response": "Error generating response: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tools.0.custom.input_schema: Field required'}}"
+    }
+  ]
+}
