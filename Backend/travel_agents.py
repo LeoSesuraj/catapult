@@ -11,6 +11,9 @@ from amadeus import Client, ResponseError
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 import re
 import json
+from openai import OpenAI
+
+client = OpenAI()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -71,7 +74,7 @@ def search_flights(
     Search for available flights matching criteria using Amadeus API.
     """
     try:
-        origin_city = origin or "New York"
+        origin_city = origin or "IND"
         if not departure_date:
             departure_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         max_results = max_results or 5
@@ -209,7 +212,7 @@ def trip_planner(request: str):
         name="Flights agent",
         instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
         
-        CONTINUE UNTIL YOU FIND A FLIGHT. 
+        CONTINUE UNTIL YOU FIND A FLIGHT. BOOK A FLIGHT BACK BASED ON THE LEAVE DATE TOO.
 
         You are a flight booking specialist. Your job is to find optimal flights.
 
@@ -279,6 +282,9 @@ def trip_planner(request: str):
         
         Your calendar events during this period:
         [LIST OF CALENDAR EVENTS]"
+
+        
+        MAKE SURE YOU BOOK A FLIGHT THERE AND BACK WITH THE CORRESPONDING CORRECT START AND END DATE 
 
         Example: "Here's your travel plan:
         - Dates: 2025-04-19 to 2025-04-20
@@ -426,9 +432,134 @@ def trip_planner(request: str):
     
     return final_output
 
+def fill_gaps():
+
+    global events
+
+    print(events)
+
+    attractions_prompt = """
+        DO NOT MODIFY OR OVERLAP WITH PRE-EXISTING EVENTS IN THE CALENDAR.
+
+        You are an intelligent assistant tasked with enhancing the provided `calendar.json` for a trip to the destination city.
+
+        Your goal is to fill significant time gaps in the calendar with attractions, activities, and food-related events in the destination city, and to add Uber rides before and after flights. Follow these steps precisely:
+
+        1. **Analyze Time Gaps**:
+        - Identify unscheduled periods of 1 hour or longer between existing events in the `calendar.json`.
+        - Consider the entire day, respecting existing events' start and end times.
+        - Exclude gaps shorter than 1 hour, as they are too brief for meaningful activities.
+
+        2. **Schedule Uber Rides for Flights**:
+        - Identify all flight events (based on summaries containing "Flight" or similar keywords).
+        - For each flight:
+            - **Before Departure**: Add an Uber ride to the airport, starting 1 hour before the flight's start time and ending at the flight's start time. Set the summary as "Uber to Airport" and location as "To [Departure Airport]".
+            - **After Arrival**: Add an Uber ride from the airport to the city, starting at the flight's end time and lasting 30 minutes. Set the summary as "Uber to City" and location as "From [Arrival Airport] to [Destination City]".
+        - Ensure Uber rides do not overlap with other events.
+
+        3. **Fill Gaps with Attractions and Activities**:
+        - For each identified gap (1 hour or longer), propose an attraction, activity, or food-related event in the destination city.
+        - Select from:
+            - **Attractions**: Museums, landmarks, parks, historical sites, or cultural centers.
+            - **Activities**: Walking tours, shopping districts, recreational activities (e.g., bike rentals), or local experiences.
+            - **Food**: Restaurants, cafes, food markets, or dining experiences (e.g., brunch, dinner, street food).
+        - Ensure variety across the trip (e.g., mix cultural sites, outdoor activities, and dining).
+        - Assign realistic durations:
+            - Attractions: 1.5–3 hours (e.g., museum visit: 2 hours).
+            - Activities: 1–2 hours (e.g., shopping: 1.5 hours).
+            - Food: 1–2 hours (e.g., dinner: 1.5 hours).
+        - Schedule activities at appropriate times (e.g., no outdoor activities after 10 PM, dinner between 6–9 PM, breakfast/brunch between 8–11 AM).
+
+        4. **Event Details**:
+        - For each new event:
+            - **Summary**: A clear, descriptive title (e.g., "Visit Metropolitan Museum of Art", "Dinner at Joe's Pizza").
+            - **Location**: Specific to the destination city (e.g., "Metropolitan Museum of Art, NYC").
+            - **Description**: A brief overview (1–2 sentences) of the attraction or activity (e.g., "Explore world-class art collections.").
+            - **Start/End Time**: Fit within the identified gap, leaving at least 15 minutes buffer before and after existing events.
+            - **Organizer**: Set to "TravelAssistant".
+            - **Timezone**: Match the input calendar's timezone (default: "America/New_York").
+            - **Calendar ID**: Copy from existing events or use "primary".
+            - **Status**: Set to "confirmed".
+            - **Created/Updated**: Use current timestamp or match existing events' format (e.g., "2025-04-13T12:00:00Z").
+            - **Creator Email**: Use "travel@assistant.com".
+            - **Attendees**: Set to null.
+        - Verify no overlaps with existing events.
+
+        5. **Travel Time**:
+        - Account for 15–30 minutes of travel time between consecutive activities at different locations.
+        - Adjust start/end times to include these buffers (e.g., end a museum visit 30 minutes before starting a dinner nearby).
+
+        6. **Output**:
+        - Return ONLY the updated calendar JSON structure, matching the input format exactly.
+        - Include all original events unchanged, plus new events for Uber rides, attractions, activities, and food.
+        - Do not include any text, explanations, or comments outside the JSON.
+
+
+        MAKE SURE TO INCLUDE THE HOTEL NAME, CHECK IN AND CHECK OUT AT HOTEL, FLIGHT NUMBER, INCLUDE THE FLIGHT BACK
+
+        The output calendar must follow this format:
+        {
+            "YYYY-MM-DD Day": [
+                {
+                    "summary": "Event title",
+                    "location": "Location details",
+                    "start_time": "HH:MM",
+                    "end_time": "HH:MM",
+                    "organizer": "organizer_name",
+                    "timezone": "America/New_York",
+                    "calendar_id": "calendar_id_value",
+                    "description": "Event description",
+                    "status": "confirmed",
+                    "created": "timestamp",
+                    "updated": "timestamp",
+                    "creator_email": "email@example.com",
+                    "attendees": null
+                },
+                ...
+            ],
+            "YYYY-MM-DD Day": [
+                {
+                    "summary": "Event title",
+                    "location": "Location details",
+                    "start_time": "HH:MM",
+                    "end_time": "HH:MM",
+                    "organizer": "organizer_name",
+                    "timezone": "America/New_York",
+                    "calendar_id": "calendar_id_value",
+                    "description": "Event description",
+                    "status": "confirmed",
+                    "created": "timestamp",
+                    "updated": "timestamp",
+                    "creator_email": "email@example.com",
+                    "attendees": null
+                },
+                ...
+            ],
+            ...
+        }
+        """
+
+    # Call API to update calendar with attractions info
+    attractions_calendar_response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": attractions_prompt},
+            {"role": "system", "content": f"calendar.json: {events}"}
+        ]
+    )
+
+    # Parse the final updated calendar with all info
+    events = attractions_calendar_response.choices[0].message.content
+
+
 # --- Test Cases --- #
 if __name__ == "__main__":
     # Test 1: Simple travel planning
     print("=== TEST 1: BASIC TRIP PLANNING ===")
-    plan = trip_planner("Plan a weekend trip to New York (JFK Airport) starting today (04/13/2025) ending in 3 days, make sure it doesn't conflict with my calendar. Make it work, plan around the trips if they conflict.")
-    print(json.dumps(plan, indent=2))
+    plan = trip_planner("Plan a weekend trip from Indianapolis (IND Airport) to New York City (JFK Airport) starting today (04/13/2025) ending in 3 days, make sure it doesn't conflict with my calendar. Make it work, plan around the trips if they conflict.")
+    
+    events = plan
+
+    fill_gaps()
+
+    print(events)
