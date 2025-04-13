@@ -193,7 +193,7 @@ def run_flight_agent(from_city_raw, to_city_raw, depart_date):
     to_city = city_to_iata(to_city_raw)
 
     if from_city == "unknown" or to_city == "unknown":
-        logger.error(f"❌ Unable to find IATA code for: {from_city_raw if from_city == 'unknown' else ''} "
+        logger.error(f"Unable to find IATA code for: {from_city_raw if from_city == 'unknown' else ''} "
                     f"or {to_city_raw if to_city == 'unknown' else ''}")
         return None  # Return None to indicate failure
 
@@ -206,7 +206,7 @@ def run_flight_agent(from_city_raw, to_city_raw, depart_date):
 
     best_flight = select_best_flight(flights)
     if best_flight:
-        logger.info("✈️ Best flight found:")
+        logger.info("Best flight found:")
         logger.info(json.dumps(best_flight, indent=2))
         return best_flight
     else:
