@@ -126,6 +126,9 @@ export default function ItineraryScreen() {
     const [selectedFlight, setSelectedFlight] = useState<FlightOption | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [lockedEvents, setLockedEvents] = useState<string[]>([]);
+    const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+    const daysListRef = useRef<FlatList>(null);
+    const mainListRef = useRef<FlatList>(null);
 
     useEffect(() => {
         Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
@@ -574,6 +577,32 @@ export default function ItineraryScreen() {
         );
     };
 
+    const scrollToDay = (dayId: string) => {
+        const dayIndex = days.findIndex(day => day.id === dayId);
+        if (dayIndex !== -1 && mainListRef.current) {
+            mainListRef.current.scrollToIndex({
+                index: dayIndex,
+                animated: true,
+                viewPosition: 0
+            });
+        }
+        setSelectedDayId(dayId);
+    };
+
+    const renderDayTab = ({ item }: { item: ItineraryDay }) => (
+        <TouchableOpacity
+            style={[styles.dayTab, selectedDayId === item.id && styles.dayTabSelected]}
+            onPress={() => scrollToDay(item.id)}
+        >
+            <Text style={[styles.dayTabText, selectedDayId === item.id && styles.dayTabTextSelected]}>
+                {moment(item.rawDate).format('ddd')}
+            </Text>
+            <Text style={[styles.dayTabDate, selectedDayId === item.id && styles.dayTabDateSelected]}>
+                {moment(item.rawDate).format('D')}
+            </Text>
+        </TouchableOpacity>
+    );
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -612,10 +641,9 @@ export default function ItineraryScreen() {
                 />
                 <TouchableOpacity
                     onPress={() => router.replace('/')}
-                    style={styles.backButtonContainer}
+                    style={styles.backButton}
                 >
                     <Feather name="chevron-left" size={28} color={THEME.TEXT_PRIMARY} />
-                    <Text style={styles.backButtonText}>Back</Text>
                 </TouchableOpacity>
                 <GestureHandlerRootView style={{ flex: 1 }}>
                     <View style={styles.headerContainer}>
@@ -630,7 +658,21 @@ export default function ItineraryScreen() {
                                     : ''}
                         </Text>
                     </View>
+
+                    <View style={styles.daysTabContainer}>
+                        <FlatList
+                            ref={daysListRef}
+                            data={days}
+                            renderItem={renderDayTab}
+                            keyExtractor={(item) => item.id}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.daysTabList}
+                        />
+                    </View>
+
                     <FlatList
+                        ref={mainListRef}
                         data={days}
                         renderItem={renderDay}
                         keyExtractor={(item) => item.id}
@@ -639,6 +681,12 @@ export default function ItineraryScreen() {
                         initialNumToRender={7}
                         maxToRenderPerBatch={10}
                         windowSize={10}
+                        onScrollToIndexFailed={(info) => {
+                            const wait = new Promise(resolve => setTimeout(resolve, 500));
+                            wait.then(() => {
+                                mainListRef.current?.scrollToIndex({ index: info.index, animated: true });
+                            });
+                        }}
                     />
                     <Modal
                         visible={modalVisible}
@@ -815,33 +863,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    backButtonContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: THEME.CARD_BACKGROUND,
-        borderRadius: 12,
-        margin: 16,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.15,
-                shadowRadius: 4,
-            },
-            android: { elevation: 3 },
-        }),
-    },
-    backButtonText: {
-        fontSize: 18,
-        color: THEME.TEXT_PRIMARY,
-        marginLeft: 8,
-        fontWeight: '600',
+    backButton: {
+        position: 'absolute',
+        top: 77,
+        left: 16,
+        zIndex: 10,
+        padding: 8,
     },
     headerContainer: {
         marginBottom: 24,
         padding: 20,
+        paddingLeft: 72,
     },
     headerTitle: {
         fontSize: 36,
@@ -1193,5 +1225,48 @@ const styles = StyleSheet.create({
     },
     lockIcon: {
         marginLeft: 8,
+    },
+    daysTabContainer: {
+        backgroundColor: THEME.BACKGROUND,
+        paddingVertical: 8,
+        marginBottom: 16,
+        borderBottomWidth: 1,
+        borderTopWidth: 1,
+        borderColor: THEME.BORDER,
+    },
+    daysTabList: {
+        paddingHorizontal: 16,
+    },
+    dayTab: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        marginRight: 8,
+        borderRadius: 12,
+        backgroundColor: THEME.BACKGROUND_LIGHTER,
+        minWidth: 60,
+    },
+    dayTabSelected: {
+        backgroundColor: THEME.PRIMARY + '30',
+        borderWidth: 1,
+        borderColor: THEME.PRIMARY,
+    },
+    dayTabText: {
+        fontSize: 14,
+        color: THEME.TEXT_SECONDARY,
+        marginBottom: 4,
+    },
+    dayTabTextSelected: {
+        color: THEME.PRIMARY,
+        fontWeight: '600',
+    },
+    dayTabDate: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: THEME.TEXT_PRIMARY,
+    },
+    dayTabDateSelected: {
+        color: THEME.PRIMARY,
     },
 });
