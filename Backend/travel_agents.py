@@ -15,59 +15,11 @@ import json
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Global events variable
+events = []
+
 # Load environment variables
 load_dotenv()
-
-class ItineraryState:
-    def __init__(self):
-        self._state = {
-            "dates": {"start": None, "end": None},
-            "destination": None,
-            "flight": None,
-            "hotel": None,
-            "total_cost": 0.0,
-            "status": "initial",
-            "calendar_events": []  # Add calendar events to state
-        }
-
-    def get_state(self) -> Dict:
-        """Get a read-only copy of the state"""
-        return self._state.copy()
-
-    def update_state(self, agent_name: str, updates: Dict) -> bool:
-        """Update the state. All agents can modify it, but only TravelAssistant can set status to 'complete'"""
-        try:
-            # Deep update the state
-            for key, value in updates.items():
-                if key == "status" and value == "complete" and agent_name != "TravelAssistant":
-                    logger.warning(f"Agent {agent_name} attempted to set status to 'complete'. Only TravelAssistant can do this.")
-                    continue
-                    
-                if isinstance(value, dict) and key in self._state and isinstance(self._state[key], dict):
-                    self._state[key].update(value)
-                else:
-                    self._state[key] = value
-            
-            # Calculate total cost if we have both flight and hotel
-            if self._state.get("flight") and self._state.get("hotel"):
-                flight_price = float(self._state["flight"].get("price", 0))
-                hotel_price = float(self._state["hotel"].get("price", 0))
-                start_date = datetime.strptime(self._state["dates"]["start"], "%Y-%m-%d")
-                end_date = datetime.strptime(self._state["dates"]["end"], "%Y-%m-%d")
-                nights = (end_date - start_date).days
-                self._state["total_cost"] = flight_price + (hotel_price * nights)
-            
-            return True
-        except Exception as e:
-            logger.error(f"Error updating state: {e}")
-            return False
-
-    def get_status(self) -> str:
-        return self._state.get("status", "initial")
-
-    def add_calendar_events(self, events: List[Dict]) -> None:
-        """Add calendar events to the state"""
-        self._state["calendar_events"] = events
 
 # --- Google Calendar Tools --- #
 @function_tool
@@ -95,15 +47,16 @@ def get_calendar_events_tool(
     """
     try:
         events_data = calendar_code.get_calendar_events(start_date, end_date, calendar_id)
-        if isinstance(events_data, dict) and "error" in events_data:
-            return {"status": "error", "error": events_data["error"]}
         
-        # Store events in the state
-        if isinstance(events_data, list):
-            itinerary_state.add_calendar_events(events_data)
+        # Update global events variable
+        global events
+        if isinstance(events_data, dict) and "events" in events_data:
+            events = events_data["events"]
+            logger.info(f"Updated global events with {len(events)} events")
             
         return {"status": "success", "data": events_data}
     except Exception as e:
+        logger.error(f"Error in get_calendar_events_tool: {e}")
         return {"status": "error", "error": str(e)}
 
 # --- Travel Planning Tools --- #
@@ -196,20 +149,45 @@ def search_hotels(destination: str) -> Dict[str, Union[List[Dict], str]]:
         print(f"Unexpected error: {e}")
         return {"status": "error", "error": "Failed to complete hotel search", "hotels": []}
 
+def format_calendar_events(events: List[Dict]) -> str:
+    """Format calendar events into a readable string"""
+    if not events:
+        return "No calendar events found during this period."
+    
+    formatted_events = []
+    for event in events:
+        start_time = datetime.fromisoformat(event['start'].get('dateTime', event['start'].get('date')))
+        end_time = datetime.fromisoformat(event['end'].get('dateTime', event['end'].get('date')))
+        
+        # Format the date and time
+        date_str = start_time.strftime("%B %d, %Y")
+        time_str = f"{start_time.strftime('%I:%M %p')} - {end_time.strftime('%I:%M %p')}"
+        
+        formatted_events.append(f"- {date_str}: {time_str}: {event.get('summary', 'Untitled Event')}")
+    
+    return "\n".join(formatted_events)
+
 # --- Main Agent --- #
 def trip_planner(request: str):
     """
     Smart travel assistant that coordinates calendar availability checks, flight searches, and hotel bookings.
     """
-    # Initialize shared state
-    itinerary_state = ItineraryState()
+    # Initialize state
+    state = {
+        "dates": {"start": None, "end": None},
+        "destination": None,
+        "flight": None,
+        "hotel": None,
+        "total_cost": 0.0,
+        "status": "initial"
+    }
 
     calendar_agent = Agent(
         name="Calendar agent",
         instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
 
         CONTINUE UNTIL YOU INTEGRATE ALL OF THE CALENDAR WITHIN THE TIMEFRAME.
-
+        
         You are a calendar specialist. Your job is to check the user's calendar for availability.
 
         Steps:
@@ -285,7 +263,7 @@ def trip_planner(request: str):
         Process:
         1. Start by IMMEDIATELY handing off to the Calendar agent using EXACTLY this format:
            "<handoff to='Calendar agent'>Please check calendar availability for: {request}</handoff>"
-        2. When you receive a handoff from the Hotels agent, extract the details and update the itinerary state:
+        2. When you receive a handoff from the Hotels agent, extract the details and update the state:
            - Update dates
            - Update flight details
            - Update hotel details
@@ -325,34 +303,29 @@ def trip_planner(request: str):
     message = request
     conversation_history = []
 
-    def update_state_from_handoff(handoff_message: str, agent_name: str) -> None:
+    def update_state_from_handoff(handoff_message: str) -> None:
         """Update state based on handoff message content"""
         try:
             # Extract dates
             if "Available dates:" in handoff_message:
                 dates_match = re.search(r"Available dates: (.*?) to (.*?),", handoff_message)
                 if dates_match:
-                    itinerary_state.update_state(agent_name, {
-                        "dates": {
-                            "start": dates_match.group(1),
-                            "end": dates_match.group(2)
-                        }
-                    })
+                    state["dates"] = {
+                        "start": dates_match.group(1),
+                        "end": dates_match.group(2)
+                    }
 
             # Extract destination
             if "Destination:" in handoff_message:
                 dest_match = re.search(r"Destination: (.*?)(?:\.|$)", handoff_message)
                 if dest_match:
-                    itinerary_state.update_state(agent_name, {
-                        "destination": dest_match.group(1).strip()
-                    })
+                    state["destination"] = dest_match.group(1).strip()
 
-            # Extract flight details - improved regex to handle airline names with spaces
+            # Extract flight details
             if "Best flight:" in handoff_message:
                 flight_match = re.search(r"Best flight: ([^,]+), Dep: (.*?), Arr: (.*?), \$([\d.]+)", handoff_message)
                 if flight_match:
                     airline_flight = flight_match.group(1).strip()
-                    # Split airline and flight number more intelligently
                     if ' ' in airline_flight:
                         parts = airline_flight.rsplit(' ', 1)
                         airline = parts[0]
@@ -361,17 +334,15 @@ def trip_planner(request: str):
                         airline = airline_flight
                         flight_number = ""
                     
-                    itinerary_state.update_state(agent_name, {
-                        "flight": {
-                            "airline": airline,
-                            "flight_number": flight_number,
-                            "departure": flight_match.group(2),
-                            "arrival": flight_match.group(3),
-                            "price": float(flight_match.group(4))
-                        }
-                    })
+                    state["flight"] = {
+                        "airline": airline,
+                        "flight_number": flight_number,
+                        "departure": flight_match.group(2),
+                        "arrival": flight_match.group(3),
+                        "price": float(flight_match.group(4))
+                    }
 
-            # Extract hotel details - improved regex to handle empty addresses
+            # Extract hotel details
             if "Best hotel:" in handoff_message:
                 hotel_match = re.search(r"Best hotel: ([^,]+), \$([\d.]+)/night(?:, ([^,]+))?(?:, Destination:)", handoff_message)
                 if hotel_match:
@@ -379,20 +350,27 @@ def trip_planner(request: str):
                     price = float(hotel_match.group(2))
                     address = hotel_match.group(3).strip() if hotel_match.group(3) else "Address not available"
                     
-                    itinerary_state.update_state(agent_name, {
-                        "hotel": {
-                            "name": hotel_name,
-                            "price": price,
-                            "address": address
-                        }
-                    })
+                    state["hotel"] = {
+                        "name": hotel_name,
+                        "price": price,
+                        "address": address
+                    }
+
+            # Calculate total cost if we have both flight and hotel
+            if state.get("flight") and state.get("hotel"):
+                flight_price = float(state["flight"].get("price", 0))
+                hotel_price = float(state["hotel"].get("price", 0))
+                start_date = datetime.strptime(state["dates"]["start"], "%Y-%m-%d")
+                end_date = datetime.strptime(state["dates"]["end"], "%Y-%m-%d")
+                nights = (end_date - start_date).days
+                state["total_cost"] = flight_price + (hotel_price * nights)
 
         except Exception as e:
             logger.error(f"Error updating state from handoff: {e}")
 
     while True:
         # Add current state to message
-        state_message = f"{message}\n\nCurrent Itinerary State:\n{json.dumps(itinerary_state.get_state(), indent=2)}"
+        state_message = f"{message}\n\nCurrent State:\n{json.dumps(state, indent=2)}"
         
         result = Runner.run_sync(
             starting_agent=current_agent,
@@ -413,7 +391,7 @@ def trip_planner(request: str):
                 handoff_message = match.group(2)
                 
                 # Update state based on handoff message
-                update_state_from_handoff(handoff_message, current_agent.name)
+                update_state_from_handoff(handoff_message)
                 
                 target_agent = next((a for a in [calendar_agent, flights_agent, hotels_agent, travel_agent] if a.name == target_agent_name), None)
                 if target_agent:
@@ -428,27 +406,29 @@ def trip_planner(request: str):
                 break
         else:
             # No handoff detected, this is the final response
-            # If this is the TravelAssistant, update the state with the final plan
             if current_agent.name == "TravelAssistant":
-                try:
-                    # Extract plan details from the response
-                    plan_updates = {
-                        "status": "complete"
-                    }
-                    itinerary_state.update_state(current_agent.name, plan_updates)
-                except Exception as e:
-                    logger.error(f"Error updating final state: {e}")
+                state["status"] = "complete"
             break
 
-    # Compile and display the final plan
-    final_plan = "\n\n".join([f"{entry['agent']}: {entry['response']}" for entry in conversation_history])
-    print("\n=== FINAL PLAN ===\n", final_plan)
-    print("\n=== FINAL STATE ===\n", json.dumps(itinerary_state.get_state(), indent=2))
-    return final_plan
+    # Format the final output
+    final_output = {
+        "travel_plan": {
+            "dates": state["dates"],
+            "destination": state["destination"],
+            "flight": state["flight"],
+            "hotel": state["hotel"],
+            "total_cost": state["total_cost"]
+        },
+        "calendar_events": events,
+        "formatted_calendar_events": format_calendar_events(events),
+        "status": state["status"]
+    }
+    
+    return final_output
 
 # --- Test Cases --- #
 if __name__ == "__main__":
     # Test 1: Simple travel planning
     print("=== TEST 1: BASIC TRIP PLANNING ===")
     plan = trip_planner("Plan a weekend trip to New York (JFK Airport) starting today (04/13/2025) ending in 3 days, make sure it doesn't conflict with my calendar. Make it work, plan around the trips if they conflict.")
-    
+    print(json.dumps(plan, indent=2))
