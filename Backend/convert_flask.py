@@ -4,5 +4,5 @@ from flask import Flask
 app = Flask(__name__)
 
 @app.route("/createitinerary", methods=["POST", "GET"])
-def convert_flask():
-    return travel_agents.pipeline("IND", "JFK", "04/13/2025","04/16/2025")
+def convert_flask(start="IND", destination="JFK", start_date="04/13/2025", end_date="04/16/2025"):
+    return travel_agents.pipeline(start, destination, start_date, end_date)
