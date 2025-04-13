@@ -23,6 +23,8 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
     const planeRotateAnim = useRef(new Animated.Value(0)).current; // Rotation for more dynamic flight
     const cloud1Anim = useRef(new Animated.Value(0)).current;
     const cloud2Anim = useRef(new Animated.Value(0)).current;
+    const cloud3Anim = useRef(new Animated.Value(0)).current;
+    const cloud4Anim = useRef(new Animated.Value(0)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
 
     // Create a ref for the scroll view to auto-scroll to the bottom
@@ -36,43 +38,43 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
             planeRotateAnim.setValue(0);
 
             Animated.parallel([
-                // Horizontal: Left to right with smooth easing
+                // Horizontal: Left to right with smoother easing
                 Animated.timing(planeXAnim, {
                     toValue: width + 50,
-                    duration: 5000,
-                    easing: Easing.bezier(0.4, 0, 0.2, 1),
+                    duration: 6000, // Increased duration for smoother movement
+                    easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Smoother easing curve
                     useNativeDriver: true,
                 }),
                 // Vertical: Continuous smooth up-and-down
                 Animated.loop(
                     Animated.sequence([
                         Animated.timing(planeYAnim, {
-                            toValue: -12, // Increased amplitude
-                            duration: 1250,
+                            toValue: -15,
+                            duration: 1500,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                         Animated.timing(planeYAnim, {
-                            toValue: 12, // Increased amplitude
-                            duration: 1250,
+                            toValue: 15,
+                            duration: 1500,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                     ]),
                     { iterations: 2 }
                 ),
-                // Rotation animation for more dynamic flight
+                // Enhanced rotation animation
                 Animated.loop(
                     Animated.sequence([
                         Animated.timing(planeRotateAnim, {
-                            toValue: 5,
-                            duration: 1250,
+                            toValue: 8,
+                            duration: 1500,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                         Animated.timing(planeRotateAnim, {
-                            toValue: -5,
-                            duration: 1250,
+                            toValue: -8,
+                            duration: 1500,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
@@ -83,36 +85,30 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
         };
         animatePlane();
 
-        // Cloud animations
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(cloud1Anim, {
-                    toValue: 1,
-                    duration: 4000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(cloud1Anim, {
-                    toValue: 0,
-                    duration: 0,
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
+        // Enhanced cloud animations with different speeds and positions
+        const startCloudAnimation = (cloudAnim: Animated.Value, duration: number, delay: number = 0) => {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(cloudAnim, {
+                        toValue: 1,
+                        duration: duration,
+                        delay: delay,
+                        useNativeDriver: true,
+                        easing: Easing.linear,
+                    }),
+                    Animated.timing(cloudAnim, {
+                        toValue: 0,
+                        duration: 0,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        };
 
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(cloud2Anim, {
-                    toValue: 1,
-                    duration: 6000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(cloud2Anim, {
-                    toValue: 0,
-                    duration: 0,
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
+        startCloudAnimation(cloud1Anim, 8000);
+        startCloudAnimation(cloud2Anim, 12000, 2000);
+        startCloudAnimation(cloud3Anim, 10000, 4000);
+        startCloudAnimation(cloud4Anim, 15000, 6000);
 
         // Progress animation
         Animated.timing(progressAnim, {
@@ -135,9 +131,11 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
             planeYAnim.stopAnimation();
             cloud1Anim.stopAnimation();
             cloud2Anim.stopAnimation();
+            cloud3Anim.stopAnimation();
+            cloud4Anim.stopAnimation();
             progressAnim.stopAnimation();
         };
-    }, [planeXAnim, planeYAnim, cloud1Anim, cloud2Anim, progressAnim]);
+    }, [planeXAnim, planeYAnim, cloud1Anim, cloud2Anim, cloud3Anim, cloud4Anim, progressAnim]);
 
     return (
         <View style={styles.container}>
@@ -190,6 +188,36 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                                             translateX: cloud2Anim.interpolate({
                                                 inputRange: [0, 1],
                                                 outputRange: [-70, width],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.cloud3,
+                                {
+                                    transform: [
+                                        {
+                                            translateX: cloud3Anim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [-60, width],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.cloud4,
+                                {
+                                    transform: [
+                                        {
+                                            translateX: cloud4Anim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [-80, width],
                                             }),
                                         },
                                     ],
@@ -328,6 +356,22 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         opacity: 0.2,
         borderRadius: 10,
+    },
+    cloud3: {
+        position: 'absolute',
+        width: 60,
+        height: 30,
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        borderRadius: 15,
+        top: '35%',
+    },
+    cloud4: {
+        position: 'absolute',
+        width: 70,
+        height: 35,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        borderRadius: 20,
+        top: '65%',
     },
     plane: {
         position: 'absolute',

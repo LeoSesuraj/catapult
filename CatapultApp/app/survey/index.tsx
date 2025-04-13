@@ -1,22 +1,84 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '../../constants/Colors';
 import { FontFamily, Spacing, BorderRadius, Shadow } from '../../constants/Theme';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { useSurvey } from './SurveyContext';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
+const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
 export default function CalendarConnect() {
     const router = useRouter();
+    const { updateSurveyData } = useSurvey();
     const [isConnecting, setIsConnecting] = useState(false);
 
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        androidClientId: ANDROID_CLIENT_ID,
+        iosClientId: IOS_CLIENT_ID,
+        webClientId: CLIENT_ID,
+        scopes: ['https://www.googleapis.com/auth/calendar.readonly']
+    });
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { authentication } = response;
+            handleGoogleSignIn(authentication.accessToken);
+        }
+    }, [response]);
+
+    const handleGoogleSignIn = async (accessToken: string) => {
+        try {
+            setIsConnecting(true);
+            // Send accessToken to your backend
+            const backendResponse = await fetch('http://localhost:5000/api/calendar/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ token: accessToken }),
+            });
+
+            if (backendResponse.ok) {
+                updateSurveyData('hasGoogleCalendar', true);
+                Alert.alert(
+                    'Success',
+                    'Successfully connected to Google Calendar!',
+                    [{ text: 'Continue', onPress: () => router.push('/survey/type') }]
+                );
+            } else {
+                throw new Error('Failed to connect to Google Calendar');
+            }
+        } catch (error) {
+            console.error('Google Calendar connection error:', error);
+            Alert.alert(
+                'Error',
+                'Failed to connect to Google Calendar. Please try again.',
+                [{ text: 'OK' }]
+            );
+        } finally {
+            setIsConnecting(false);
+        }
+    };
+
     const handleGoogleConnect = async () => {
-        setIsConnecting(true);
-        // TODO: Implement Google Calendar connection
-        // For now, just proceed to the first survey question
-        router.push('/survey/type');
-        setIsConnecting(false);
+        try {
+            setIsConnecting(true);
+            await promptAsync();
+        } catch (error) {
+            console.error('Google auth error:', error);
+            Alert.alert('Error', 'Failed to start Google authentication');
+        } finally {
+            setIsConnecting(false);
+        }
     };
 
     const handleSkip = () => {
@@ -54,9 +116,12 @@ export default function CalendarConnect() {
                         </Text>
 
                         <TouchableOpacity
-                            style={styles.googleButton}
+                            style={[
+                                styles.googleButton,
+                                isConnecting && styles.disabledButton
+                            ]}
                             onPress={handleGoogleConnect}
-                            disabled={isConnecting}
+                            disabled={isConnecting || !request}
                         >
                             <FontAwesome name="google" size={20} color="#FFFFFF" style={styles.buttonIcon} />
                             <Text style={styles.buttonText}>
@@ -160,5 +225,9 @@ const styles = StyleSheet.create({
         color: '#A0AEC0',
         fontSize: 16,
         fontFamily: FontFamily.montserratMedium,
+    },
+    disabledButton: {
+        opacity: 0.7,
+        backgroundColor: '#718096',
     },
 }); 

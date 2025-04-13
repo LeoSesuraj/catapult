@@ -10,6 +10,17 @@ export interface SurveyData {
     duration: number | null;
     budget: number | null;
     budgetTier: string | null;
+    reason_for_trip?: string;
+    location?: string;
+    hasGoogleCalendar?: boolean;
+    calendarEvents?: Array<{
+        id: string;
+        summary: string;
+        start: string;
+        end: string;
+        description?: string;
+        location?: string;
+    }>;
 }
 
 interface Trip {

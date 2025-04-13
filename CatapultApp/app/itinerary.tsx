@@ -48,6 +48,7 @@ const THEME = {
     TRANSPORT: '#63B3ED',
     ACCOMMODATION: '#B794F4',
     FREE_TIME: '#CBD5E0',
+    DANGER: '#e53e3e',  // Red color for dangerous actions like delete
 };
 
 // Activity type config
@@ -450,11 +451,26 @@ export default function ItineraryScreen() {
             >
                 <View style={styles.timeContainer}>
                     <Text style={styles.timeText}>{item.time}</Text>
-                    {isFlight && <Text style={styles.dayIndicator}>→</Text>}
+                    {isFlight && (
+                        <FontAwesome
+                            name="plane"
+                            size={16}
+                            color={THEME.TEXT_SECONDARY}
+                            style={styles.flightIcon}
+                        />
+                    )}
                 </View>
                 <View style={[styles.activityContent, { borderLeftColor: getActivityColor(item.type) }]}>
                     <View style={styles.activityHeader}>
-                        <FontAwesome name={getActivityIcon(item.type)} size={16} color={getActivityColor(item.type)} style={styles.activityIcon} />
+                        <FontAwesome
+                            name={isFlight ? "plane" : getActivityIcon(item.type)}
+                            size={16}
+                            color={getActivityColor(item.type)}
+                            style={[
+                                styles.activityIcon,
+                                isFlight && styles.flightIconRotated
+                            ]}
+                        />
                         <Text style={styles.activityTitle}>{item.title}</Text>
                         {isLocked && <Feather name="lock" size={14} color={THEME.ACCENT} style={styles.lockIcon} />}
                     </View>
@@ -638,8 +654,8 @@ export default function ItineraryScreen() {
                             {trip
                                 ? `${moment(trip.start_time).format('MMM D')} - ${moment(trip.end_time).format('MMM D, YYYY')}`
                                 : storedItinerary.itinerary[0].date && storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date
-                                ? `${moment(storedItinerary.itinerary[0].date).format('MMM D')} - ${moment(storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date).format('MMM D, YYYY')}`
-                                : ''}
+                                    ? `${moment(storedItinerary.itinerary[0].date).format('MMM D')} - ${moment(storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date).format('MMM D, YYYY')}`
+                                    : ''}
                         </Text>
                     </View>
                     <FlatList
@@ -652,117 +668,103 @@ export default function ItineraryScreen() {
                         maxToRenderPerBatch={10}
                         windowSize={10}
                     />
-                    <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+                    <Modal
+                        visible={modalVisible}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => setModalVisible(false)}
+                    >
                         <BlurView intensity={20} tint="dark" style={styles.modalOverlay}>
-                            <Animated.View style={[styles.modalContent, {
-                                transform: [{
-                                    translateY: fadeAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [600, 0]
-                                    })
-                                }]
-                            }]}>
-                                <LinearGradient colors={[THEME.BACKGROUND, THEME.BACKGROUND_LIGHTER]} style={styles.modalGradient}>
+                            <View style={styles.modalContent}>
+                                <LinearGradient
+                                    colors={[THEME.BACKGROUND, THEME.BACKGROUND_LIGHTER]}
+                                    style={styles.modalGradient}
+                                >
                                     <View style={styles.modalHeader}>
                                         <Text style={styles.modalTitle}>Event Details</Text>
-                                        <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                        <TouchableOpacity
+                                            onPress={() => setModalVisible(false)}
+                                            style={styles.closeButton}
+                                        >
                                             <Feather name="x" size={24} color={THEME.TEXT_PRIMARY} />
                                         </TouchableOpacity>
                                     </View>
-                                    <ScrollView style={styles.modalScrollView}>
-                                        <View style={styles.eventDetailsContainer}>
+
+                                    {selectedEvent && (
+                                        <ScrollView style={styles.modalBody}>
                                             <View style={styles.eventTypeHeader}>
                                                 <FontAwesome
-                                                    name={getActivityIcon(editType)}
+                                                    name={selectedEvent.type === 'transport' && selectedEvent.details?.isFlight
+                                                        ? "plane"
+                                                        : getActivityIcon(selectedEvent.type)}
                                                     size={24}
-                                                    color={getActivityColor(editType)}
+                                                    color={getActivityColor(selectedEvent.type)}
+                                                    style={[
+                                                        styles.eventTypeIcon,
+                                                        selectedEvent.type === 'transport' && selectedEvent.details?.isFlight && styles.flightIconRotated
+                                                    ]}
                                                 />
                                                 <Text style={styles.eventTypeText}>
-                                                    {editType.charAt(0).toUpperCase() + editType.slice(1)}
+                                                    {selectedEvent.type === 'transport' && selectedEvent.details?.isFlight
+                                                        ? 'Flight'
+                                                        : selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
                                                 </Text>
                                             </View>
-                                            <TextInput
-                                                style={styles.eventInput}
-                                                value={editTitle}
-                                                onChangeText={setEditTitle}
-                                                placeholder="Title"
-                                                placeholderTextColor={THEME.TEXT_TERTIARY}
-                                            />
-                                            <View style={styles.eventTimeRow}>
-                                                <Feather name="clock" size={16} color={THEME.TEXT_SECONDARY} />
-                                                <TextInput
-                                                    style={[styles.eventInput, styles.eventInputInline]}
-                                                    value={editTime}
-                                                    onChangeText={setEditTime}
-                                                    placeholder="Time"
-                                                    placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                />
+
+                                            <View style={styles.eventDetails}>
+                                                <Text style={styles.eventTitle}>{selectedEvent.title}</Text>
+                                                <Text style={styles.eventTime}>{selectedEvent.time}</Text>
+                                                {selectedEvent.location && (
+                                                    <View style={styles.eventLocation}>
+                                                        <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
+                                                        <Text style={styles.eventLocationText}>{selectedEvent.location}</Text>
+                                                    </View>
+                                                )}
+                                                {selectedEvent.description && (
+                                                    <Text style={styles.eventDescription}>{selectedEvent.description}</Text>
+                                                )}
                                             </View>
-                                            <View style={styles.eventLocationRow}>
-                                                <Feather name="map-pin" size={16} color={THEME.TEXT_SECONDARY} />
-                                                <TextInput
-                                                    style={[styles.eventInput, styles.eventInputInline]}
-                                                    value={editLocation}
-                                                    onChangeText={setEditLocation}
-                                                    placeholder="Location"
-                                                    placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                />
-                                            </View>
-                                            <TextInput
-                                                style={[styles.eventInput, styles.eventDescriptionInput]}
-                                                value={editDescription}
-                                                onChangeText={setEditDescription}
-                                                placeholder="Description"
-                                                placeholderTextColor={THEME.TEXT_TERTIARY}
-                                                multiline
-                                            />
-                                        </View>
-                                        <View style={styles.modalActions}>
-                                            <TouchableOpacity
-                                                style={[styles.actionButton, styles.saveButton]}
-                                                onPress={handleUpdateEvent}
-                                            >
-                                                <Feather name="save" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                <Text style={styles.actionButtonText}>Save Changes</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={[styles.actionButton, styles.findAlternativeButton]}
-                                                onPress={() => handleCancelEvent()}
-                                            >
-                                                <Feather name="refresh-cw" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                <Text style={styles.actionButtonText}>Find Alternative</Text>
-                                            </TouchableOpacity>
-                                            {selectedEvent && (
+
+                                            <View style={styles.actionButtons}>
                                                 <TouchableOpacity
-                                                    style={[styles.actionButton, selectedEvent.isLocked ? styles.unlockButton : styles.lockButton]}
-                                                    onPress={() => {
-                                                        if (selectedDayIndex !== null && selectedEventIndex !== null) {
-                                                            toggleEventLock(selectedEvent.id, selectedDayIndex, selectedEventIndex);
-                                                        }
-                                                    }}
+                                                    style={[styles.actionButton, styles.lockButton]}
+                                                    onPress={() => toggleEventLock(selectedEvent.id, selectedDayIndex!, selectedEventIndex!)}
                                                 >
                                                     <Feather
                                                         name={selectedEvent.isLocked ? "unlock" : "lock"}
-                                                        size={18}
-                                                        color="#fff"
-                                                        style={styles.actionButtonIcon}
+                                                        size={20}
+                                                        color={THEME.TEXT_PRIMARY}
                                                     />
                                                     <Text style={styles.actionButtonText}>
-                                                        {selectedEvent.isLocked ? "Unlock Event" : "Lock Event"}
+                                                        {selectedEvent.isLocked ? "Unlock" : "Lock"}
                                                     </Text>
                                                 </TouchableOpacity>
-                                            )}
-                                            <TouchableOpacity
-                                                style={[styles.actionButton, styles.deleteButton]}
-                                                onPress={handleDeleteEvent}
-                                            >
-                                                <Feather name="trash-2" size={18} color="#fff" style={styles.actionButtonIcon} />
-                                                <Text style={styles.actionButtonText}>Delete Event</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </ScrollView>
+
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.editButton]}
+                                                    onPress={() => {
+                                                        setModalVisible(false);
+                                                        // Add edit functionality
+                                                    }}
+                                                >
+                                                    <Feather name="edit-2" size={20} color={THEME.TEXT_PRIMARY} />
+                                                    <Text style={styles.actionButtonText}>Edit</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.deleteButton]}
+                                                    onPress={handleDeleteEvent}
+                                                >
+                                                    <Feather name="trash-2" size={20} color={THEME.DANGER} />
+                                                    <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
+                                                        Delete
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </ScrollView>
+                                    )}
                                 </LinearGradient>
-                            </Animated.View>
+                            </View>
                         </BlurView>
                     </Modal>
                     <Modal animationType="fade" transparent={true} visible={flightSelectionModalVisible} onRequestClose={() => setFlightSelectionModalVisible(false)}>
@@ -953,17 +955,15 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        justifyContent: 'flex-end',
-        padding: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
-        backgroundColor: THEME.BACKGROUND,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        overflow: 'hidden',
+        width: '90%',
         maxHeight: '80%',
-        width: '100%',
+        borderRadius: 20,
+        overflow: 'hidden',
     },
     modalGradient: {
         padding: 20,
@@ -979,94 +979,92 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: THEME.TEXT_PRIMARY,
     },
-    eventDetailsContainer: {
-        marginBottom: 24,
+    closeButton: {
+        padding: 5,
+    },
+    modalBody: {
+        maxHeight: '100%',
     },
     eventTypeHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
+    },
+    eventTypeIcon: {
+        marginRight: 10,
     },
     eventTypeText: {
         fontSize: 18,
-        fontWeight: '600',
-        color: THEME.TEXT_SECONDARY,
-        marginLeft: 12,
-    },
-    eventInput: {
-        fontSize: 16,
         color: THEME.TEXT_PRIMARY,
-        backgroundColor: THEME.BACKGROUND_LIGHTER,
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 12,
+        fontWeight: '600',
     },
-    eventInputInline: {
-        flex: 1,
-        marginLeft: 8,
-        padding: 8,
+    eventDetails: {
+        marginBottom: 30,
     },
-    eventDescriptionInput: {
-        minHeight: 100,
-        textAlignVertical: 'top',
+    eventTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: THEME.TEXT_PRIMARY,
+        marginBottom: 10,
     },
-    modalActions: {
-        marginTop: 24,
-        gap: 12,
+    eventTime: {
+        fontSize: 16,
+        color: THEME.TEXT_SECONDARY,
+        marginBottom: 10,
+    },
+    eventLocation: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    eventLocationText: {
+        fontSize: 16,
+        color: THEME.TEXT_SECONDARY,
+        marginLeft: 10,
+    },
+    eventDescription: {
+        fontSize: 16,
+        color: THEME.TEXT_TERTIARY,
+        lineHeight: 24,
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
     },
     actionButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
-        borderRadius: 12,
-        backgroundColor: THEME.PRIMARY,
-    },
-    actionButtonIcon: {
-        marginRight: 8,
+        padding: 12,
+        borderRadius: 10,
+        marginHorizontal: 5,
+        backgroundColor: THEME.CARD_BACKGROUND,
     },
     actionButtonText: {
+        marginLeft: 8,
         fontSize: 16,
+        color: THEME.TEXT_PRIMARY,
         fontWeight: '600',
-        color: '#fff',
-    },
-    saveButton: {
-        backgroundColor: THEME.SECONDARY,
-    },
-    findAlternativeButton: {
-        backgroundColor: THEME.PRIMARY,
     },
     lockButton: {
-        backgroundColor: THEME.ACCENT,
+        backgroundColor: THEME.ACCENT + '20',
     },
-    unlockButton: {
-        backgroundColor: THEME.TEXT_TERTIARY,
+    editButton: {
+        backgroundColor: THEME.PRIMARY + '20',
     },
     deleteButton: {
-        backgroundColor: '#e53e3e',
+        backgroundColor: THEME.DANGER + '20',
     },
-    dayIndicator: {
-        fontSize: 12,
-        color: THEME.TEXT_TERTIARY,
-        marginTop: 2,
+    deleteButtonText: {
+        color: THEME.DANGER,
     },
-    activityItemLocked: {
-        borderColor: THEME.ACCENT,
-        borderWidth: 2,
+    flightIcon: {
+        marginTop: 5,
     },
-    lockIcon: {
-        marginLeft: 8,
-    },
-    headerRightContainer: {
-        flexDirection: 'row',
-    },
-    dayHeaderRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    addEventButton: {
-        marginLeft: 10,
-        padding: 4,
+    flightIconRotated: {
+        transform: [{ rotate: '45deg' }],
     },
     flightCard: {
         backgroundColor: THEME.CARD_BACKGROUND,
@@ -1187,7 +1185,22 @@ const styles = StyleSheet.create({
         color: THEME.TEXT_TERTIARY,
         textAlign: 'center',
     },
-    modalScrollView: {
-        flex: 1,
+    headerRightContainer: {
+        flexDirection: 'row',
+    },
+    dayHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    addEventButton: {
+        marginLeft: 10,
+        padding: 4,
+    },
+    activityItemLocked: {
+        borderColor: THEME.ACCENT,
+        borderWidth: 2,
+    },
+    lockIcon: {
+        marginLeft: 8,
     },
 });
