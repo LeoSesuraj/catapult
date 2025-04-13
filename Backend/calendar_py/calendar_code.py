@@ -95,17 +95,17 @@ def get_calendar_service():
         print(f"Error building calendar service: {e}")
         return None
 
-def list_all_calendars():
+def list_all_calendars(service):
     """
     List all calendars the user has access to
     
     Returns:
         list: List of dictionaries containing calendar info (id, summary, etc.)
     """
-    service = get_calendar_service()
+    # service = get_calendar_service()
     
-    if not service:
-        return []
+    # if not service:
+    #     return []
     
     try:
         # Get list of calendars
