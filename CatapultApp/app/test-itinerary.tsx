@@ -26,6 +26,9 @@ import { Swipeable as SwipeableGestureHandler } from 'react-native-gesture-handl
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import SwipeableItem, { SwipeableItemImperativeRef } from 'react-native-swipeable-item';
+import { BlurView } from 'expo-blur';
+import { updateTripItinerary } from './data/trips';
+import { saveTripData, TripData } from './utils/storage';
 
 // Make our own extended version of StoredItineraryEvent with isLocked property
 interface ExtendedItineraryEvent extends StoredItineraryEvent {
@@ -153,7 +156,7 @@ export default function TestItineraryScreen() {
     const [isSwiping, setIsSwiping] = useState(false);
     const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [viewMode, setViewMode] = useState<'days' | 'full'>('days');
+    const [viewMode, setViewMode] = useState<'days'>('days');
     const [isReadOnlyMode, setIsReadOnlyMode] = useState(true);
     const [lockedEvents, setLockedEvents] = useState<string[]>([]);
 
@@ -302,6 +305,20 @@ export default function TestItineraryScreen() {
         loadItinerary();
     }, []);
 
+    useEffect(() => {
+        // Fade in animation for modal
+        if (modalVisible) {
+            Animated.spring(fadeAnim, {
+                toValue: 1,
+                useNativeDriver: true,
+                damping: 15,
+                stiffness: 100
+            }).start();
+        } else {
+            fadeAnim.setValue(0);
+        }
+    }, [modalVisible]);
+
     // Set active day when data is available
     useEffect(() => {
         console.log(`Display days available: ${days.length}`);
@@ -411,8 +428,15 @@ export default function TestItineraryScreen() {
         };
 
         try {
+            // Save to local storage
             await storeItinerary(updatedItinerary);
-            console.log("Changes saved to storage");
+
+            // Save to trip data
+            // TODO: Get actual trip ID from navigation params
+            const tripId = "current_trip_id";
+            await updateTripItinerary(tripId, updatedItinerary);
+
+            console.log("Changes saved to storage and trip data");
         } catch (error) {
             console.error("Failed to save changes:", error);
             Alert.alert("Error", "Failed to save changes. Please try again.");
@@ -595,8 +619,8 @@ export default function TestItineraryScreen() {
             >
                 <View style={styles.timeContainer}>
                     <Text style={styles.timeText}>{item.time}</Text>
-                    {viewMode === 'full' && (
-                        <Text style={styles.dayIndicator}>{item.type === 'transport' ? '→' : '•'}</Text>
+                    {item.type === 'transport' && (
+                        <Text style={styles.dayIndicator}>→</Text>
                     )}
                 </View>
 
@@ -802,7 +826,26 @@ export default function TestItineraryScreen() {
                         <Text style={styles.emptyText}>Create a trip to generate an itinerary</Text>
                         <TouchableOpacity
                             style={styles.createButton}
-                            onPress={() => router.push('/survey')}
+                            onPress={() => {
+                                // Save empty trip data first
+                                const newTrip: TripData = {
+                                    reason_for_trip: 'personal',
+                                    location: 'Not specified',
+                                    start_time: new Date().toISOString(),
+                                    end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                                    budget: 1000,
+                                    itinerary: []
+                                };
+
+                                saveTripData(newTrip)
+                                    .then(() => {
+                                        router.push('/survey');
+                                    })
+                                    .catch((error: Error) => {
+                                        console.error('Error creating trip:', error);
+                                        Alert.alert('Error', 'Failed to create trip. Please try again.');
+                                    });
+                            }}
                         >
                             <Text style={styles.createButtonText}>Create Trip</Text>
                         </TouchableOpacity>
@@ -873,90 +916,42 @@ export default function TestItineraryScreen() {
                         <Text style={styles.headerSubtitle}>
                             {`${moment(storedItinerary.itinerary[0].date).format('MMM D')} - ${moment(storedItinerary.itinerary[storedItinerary.itinerary.length - 1].date).format('MMM D, YYYY')}`}
                         </Text>
-
-                        <View style={styles.viewToggleContainer}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.viewToggleButton,
-                                    viewMode === 'days' && styles.viewToggleButtonActive
-                                ]}
-                                onPress={() => setViewMode('days')}
-                            >
-                                <Text style={[
-                                    styles.viewToggleText,
-                                    viewMode === 'days' && styles.viewToggleTextActive
-                                ]}>By Day</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.viewToggleButton,
-                                    viewMode === 'full' && styles.viewToggleButtonActive
-                                ]}
-                                onPress={() => setViewMode('full')}
-                            >
-                                <Text style={[
-                                    styles.viewToggleText,
-                                    viewMode === 'full' && styles.viewToggleTextActive
-                                ]}>Full Trip</Text>
-                            </TouchableOpacity>
-                        </View>
                     </View>
 
-                    {viewMode === 'days' ? (
-                        <FlatList
-                            data={days}
-                            renderItem={renderDay}
-                            keyExtractor={(item) => item.id}
-                            contentContainerStyle={styles.listContainer}
-                            showsVerticalScrollIndicator={true}
-                            initialNumToRender={7}
-                            maxToRenderPerBatch={10}
-                            windowSize={10}
-                        />
-                    ) : renderFullTripView()}
-
-                    {/* Flight Selection Modal */}
-                    <Modal
-                        animationType="slide"
-                        transparent={true}
-                        visible={flightSelectionModalVisible}
-                        onRequestClose={() => setFlightSelectionModalVisible(false)}
-                    >
-                        <View style={styles.modalOverlay}>
-                            <View style={styles.flightModalContent}>
-                                <View style={styles.modalHeader}>
-                                    <Text style={styles.modalTitle}>Select Flight</Text>
-                                    <TouchableOpacity onPress={() => setFlightSelectionModalVisible(false)}>
-                                        <Feather name="x" size={24} color={THEME.TEXT_PRIMARY} />
-                                    </TouchableOpacity>
-                                </View>
-
-                                <FlatList
-                                    data={availableFlights}
-                                    keyExtractor={(item) => item.id}
-                                    renderItem={renderFlightOption}
-                                    contentContainerStyle={styles.flightList}
-                                    showsVerticalScrollIndicator={true}
-                                />
-
-                                <View style={styles.flightModalFooter}>
-                                    <Text style={styles.flightModalFooterText}>
-                                        Selecting a flight will update your itinerary automatically
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                    </Modal>
+                    <FlatList
+                        data={days}
+                        renderItem={renderDay}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={styles.listContainer}
+                        showsVerticalScrollIndicator={true}
+                        initialNumToRender={7}
+                        maxToRenderPerBatch={10}
+                        windowSize={10}
+                    />
 
                     {/* Event Detail/Edit Modal */}
                     <Modal
-                        animationType="slide"
+                        animationType="fade"
                         transparent={true}
                         visible={modalVisible}
                         onRequestClose={() => setModalVisible(false)}
                     >
-                        <View style={styles.modalOverlay}>
-                            <View style={styles.modalContent}>
+                        <BlurView
+                            intensity={20}
+                            tint="dark"
+                            style={styles.modalOverlay}
+                        >
+                            <Animated.View style={[
+                                styles.modalContent,
+                                {
+                                    transform: [{
+                                        translateY: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [600, 0]
+                                        })
+                                    }]
+                                }
+                            ]}>
                                 <LinearGradient
                                     colors={[THEME.BACKGROUND, THEME.BACKGROUND_LIGHTER]}
                                     style={styles.modalGradient}
@@ -1069,8 +1064,45 @@ export default function TestItineraryScreen() {
                                         </TouchableOpacity>
                                     </View>
                                 </LinearGradient>
+                            </Animated.View>
+                        </BlurView>
+                    </Modal>
+
+                    {/* Flight Selection Modal */}
+                    <Modal
+                        animationType="fade"
+                        transparent={true}
+                        visible={flightSelectionModalVisible}
+                        onRequestClose={() => setFlightSelectionModalVisible(false)}
+                    >
+                        <BlurView
+                            intensity={20}
+                            tint="dark"
+                            style={styles.modalOverlay}
+                        >
+                            <View style={styles.modalContent}>
+                                <View style={styles.modalHeader}>
+                                    <Text style={styles.modalTitle}>Select Flight</Text>
+                                    <TouchableOpacity onPress={() => setFlightSelectionModalVisible(false)}>
+                                        <Feather name="x" size={24} color={THEME.TEXT_PRIMARY} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <FlatList
+                                    data={availableFlights}
+                                    keyExtractor={(item) => item.id}
+                                    renderItem={renderFlightOption}
+                                    contentContainerStyle={styles.flightList}
+                                    showsVerticalScrollIndicator={true}
+                                />
+
+                                <View style={styles.flightModalFooter}>
+                                    <Text style={styles.flightModalFooterText}>
+                                        Selecting a flight will update your itinerary automatically
+                                    </Text>
+                                </View>
                             </View>
-                        </View>
+                        </BlurView>
                     </Modal>
                 </GestureHandlerRootView>
             </SafeAreaView>
@@ -1211,7 +1243,7 @@ const styles = StyleSheet.create({
         }),
     },
     timeContainer: {
-        width: 60,
+        width: 70,
         padding: 12,
         alignItems: 'center',
         justifyContent: 'flex-start',
@@ -1221,6 +1253,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: THEME.TEXT_SECONDARY,
+        textAlign: 'center',
     },
     activityContent: {
         flex: 1,
@@ -1258,8 +1291,9 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
         justifyContent: 'flex-end',
+        padding: 0,
     },
     modalContent: {
         backgroundColor: THEME.BACKGROUND,
@@ -1267,6 +1301,7 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         overflow: 'hidden',
         maxHeight: '80%',
+        width: '100%',
     },
     modalGradient: {
         padding: 20,
