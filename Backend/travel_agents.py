@@ -553,13 +553,10 @@ def fill_gaps():
 
 
 # --- Test Cases --- #
-if __name__ == "__main__":
-    # Test 1: Simple travel planning
-    print("=== TEST 1: BASIC TRIP PLANNING ===")
-    plan = trip_planner("Plan a weekend trip from Indianapolis (IND Airport) to New York City (JFK Airport) starting today (04/13/2025) ending in 3 days, make sure it doesn't conflict with my calendar. Make it work, plan around the trips if they conflict.")
-    
-    events = plan
+def pipeline(start, end, sdate, edate):
 
+    plan = trip_planner("Plan a weekend trip from Indianapolis (IND Airport) to New York City (JFK Airport) starting today (04/13/2025) ending in 3 days, make sure it doesn't conflict with my calendar. Make it work, plan around the trips if they conflict.")
+    events = plan
     fill_gaps()
 
-    print(events)
+    return events
