@@ -1,21 +1,21 @@
 {
   "dates": {
-    "start": "2025-04-15",
-    "end": "2025-04-17"
+    "start": "2025-04-22",
+    "end": "2025-04-23"
   },
-  "destination": "Houston",
-  "origin": "Phoenix",
+  "destination": "Phoenix",
+  "origin": "Los Angeles",
   "flight": {
     "airline": "Delta",
-    "flight_number": "DL951",
-    "departure": "2025-04-15T12:45:00",
-    "arrival": "2025-04-15T14:30:00",
-    "price": 269.02,
+    "flight_number": "DL650",
+    "departure": "2025-04-22T12:45:00",
+    "arrival": "2025-04-22T14:30:00",
+    "price": 395.19,
     "currency": "USD"
   },
   "hotel": {
-    "name": "HAMPTON INN HOUSTON NW FREEWAY",
-    "price": 111.15,
+    "name": "BEST WESTERN INN OF CHANDLER",
+    "price": 142.04,
     "address": "Address not available",
     "rating": 0,
     "available": true
@@ -26,54 +26,28 @@
       "activities": [
         {
           "time": "Morning",
-          "name": "Sightseeing Tour in Houston",
-          "description": "Guided tour of Houston's main attractions",
-          "location": "Houston Downtown",
-          "cost": 42.94
+          "name": "Sightseeing Tour in Phoenix",
+          "description": "Guided tour of Phoenix's main attractions",
+          "location": "Phoenix Downtown",
+          "cost": 59.61
         },
         {
           "time": "Afternoon",
-          "name": "Local Cuisine & Shopping in Houston",
-          "description": "Sample the best food and shops in Houston",
-          "location": "Houston Market District",
-          "cost": 68.83
+          "name": "Local Cuisine & Shopping in Phoenix",
+          "description": "Sample the best food and shops in Phoenix",
+          "location": "Phoenix Market District",
+          "cost": 68.12
         },
         {
           "time": "Evening",
-          "name": "Nightlife Experience in Houston",
-          "description": "Experience Houston after dark with dinner and entertainment",
-          "location": "Houston Entertainment District",
-          "cost": 121.07
-        }
-      ]
-    },
-    {
-      "day": 2,
-      "activities": [
-        {
-          "time": "Morning",
-          "name": "Sightseeing Tour in Houston",
-          "description": "Guided tour of Houston's main attractions",
-          "location": "Houston Downtown",
-          "cost": 38.46
-        },
-        {
-          "time": "Afternoon",
-          "name": "Local Cuisine & Shopping in Houston",
-          "description": "Sample the best food and shops in Houston",
-          "location": "Houston Market District",
-          "cost": 64.08
-        },
-        {
-          "time": "Evening",
-          "name": "Nightlife Experience in Houston",
-          "description": "Experience Houston after dark with dinner and entertainment",
-          "location": "Houston Entertainment District",
-          "cost": 126.7
+          "name": "Nightlife Experience in Phoenix",
+          "description": "Experience Phoenix after dark with dinner and entertainment",
+          "location": "Phoenix Entertainment District",
+          "cost": 111.6
         }
       ]
     }
   ],
-  "total_cost": 491.32,
+  "total_cost": 537.23,
   "status": "complete"
 }

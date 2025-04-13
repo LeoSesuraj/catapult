@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated, StyleSheet, Dimensions, Easing, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -9,11 +9,33 @@ const { width } = Dimensions.get('window');
 interface LoadingScreenProps {
     message?: string;
     logs?: string[];
+    onFinished?: () => void;
 }
 
-const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) => {
+// Mock travel planning steps for a better user experience
+const TRAVEL_PLANNING_STEPS = [
+    "Analyzing your preferences...",
+    "Searching for available flights...",
+    "Finding the best hotel deals...",
+    "Checking local attractions...",
+    "Optimizing travel routes...",
+    "Calculating budget options...",
+    "Checking weather forecasts...",
+    "Finding local restaurants...",
+    "Looking for transportation options...",
+    "Checking for travel advisories...",
+    "Finding popular activities...",
+    "Creating your custom itinerary...",
+    "Finalizing your travel plan...",
+    "Checking for special offers...",
+    "Finding travel insurance options...",
+    "Your trip is almost ready..."
+];
+
+const LoadingScreen = ({ logs = [], onFinished }: LoadingScreenProps) => {
     const loadingDots = useRef('');
     const dotAnimationId = useRef<NodeJS.Timeout | null>(null);
+    const [displayedLogs, setDisplayedLogs] = useState<string[]>([]);
 
     // Animated values
     const planeXAnim = useRef(new Animated.Value(-50)).current;
@@ -24,70 +46,96 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
     const cloud3Anim = useRef(new Animated.Value(0)).current;
     const cloud4Anim = useRef(new Animated.Value(0)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
+    const planeOpacityAnim = useRef(new Animated.Value(1)).current;
 
     // Scroll view ref
     const scrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
-        // Plane animation - continuous looping
+        // Create a smoother plane animation without jerking on reset
         const animatePlane = () => {
-            // Reset plane position to start
+            // Reset the plane position to start
             planeXAnim.setValue(-50);
+            planeOpacityAnim.setValue(1);
 
-            // Create realistic flight animation
-            Animated.parallel([
-                // Horizontal: Left to right with natural easing
+            // Create a sequence for the plane animation
+            Animated.sequence([
+                // Fly across the screen
                 Animated.timing(planeXAnim, {
                     toValue: width + 50,
-                    duration: 10000, // Slower for more natural flight
-                    easing: Easing.linear, // Linear for smooth continuous flight
+                    duration: 10000,
+                    easing: Easing.linear,
                     useNativeDriver: true,
                 }),
-
-                // Gentle vertical movement - subtle up and down
-                Animated.loop(
-                    Animated.sequence([
-                        Animated.timing(planeYAnim, {
-                            toValue: -8, // Reduced range for subtlety
-                            duration: 2000,
-                            easing: Easing.inOut(Easing.sin),
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(planeYAnim, {
-                            toValue: 8, // Reduced range for subtlety
-                            duration: 2000,
-                            easing: Easing.inOut(Easing.sin),
-                            useNativeDriver: true,
-                        }),
-                    ]),
-                    { iterations: 5 } // Match with the horizontal movement
-                ),
-
-                // Natural rotation that follows the flight path
-                Animated.loop(
-                    Animated.sequence([
-                        Animated.timing(planeRotateAnim, {
-                            toValue: 5, // Reduced for subtlety
-                            duration: 2000,
-                            easing: Easing.inOut(Easing.sin),
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(planeRotateAnim, {
-                            toValue: -5, // Reduced for subtlety
-                            duration: 2000,
-                            easing: Easing.inOut(Easing.sin),
-                            useNativeDriver: true,
-                        }),
-                    ]),
-                    { iterations: 5 }
-                ),
+                // Fade out at the end
+                Animated.timing(planeOpacityAnim, {
+                    toValue: 0,
+                    duration: 0, // Instant
+                    useNativeDriver: true,
+                }),
+                // Move back to start while invisible
+                Animated.timing(planeXAnim, {
+                    toValue: -50,
+                    duration: 0, // Instant
+                    useNativeDriver: true,
+                }),
+                // Fade back in
+                Animated.timing(planeOpacityAnim, {
+                    toValue: 1,
+                    duration: 400, // Gradual fade in
+                    easing: Easing.ease,
+                    useNativeDriver: true,
+                }),
             ]).start(() => {
-                // Loop animation continuously
+                // Loop the animation
                 animatePlane();
             });
         };
 
+        // Start the smooth vertical motion for the plane
+        const animatePlaneVertical = () => {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(planeYAnim, {
+                        toValue: -8,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.sin),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(planeYAnim, {
+                        toValue: 8,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.sin),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        };
+
+        // Start the smooth rotation for the plane
+        const animatePlaneRotation = () => {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(planeRotateAnim, {
+                        toValue: 5,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.sin),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(planeRotateAnim, {
+                        toValue: -5,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.sin),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        };
+
+        // Start all plane animations
         animatePlane();
+        animatePlaneVertical();
+        animatePlaneRotation();
 
         // Cloud animations with different speeds
         const startCloudAnimation = (cloudAnim: Animated.Value, duration: number, delay: number = 0) => {
@@ -114,33 +162,52 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
         startCloudAnimation(cloud3Anim, 20000, 4000);
         startCloudAnimation(cloud4Anim, 25000, 6000);
 
-        // Progress animation
+        // Progress animation - make it take longer (15 seconds)
         Animated.timing(progressAnim, {
             toValue: 1,
-            duration: 8000,
+            duration: 15000,
             useNativeDriver: false,
-        }).start();
+            easing: Easing.inOut(Easing.cubic), // Smoother animation
+        }).start(() => {
+            // Call onFinished callback when animation completes
+            if (onFinished) {
+                setTimeout(onFinished, 1000);
+            }
+        });
 
         // Loading dots
         dotAnimationId.current = setInterval(() => {
             loadingDots.current = loadingDots.current.length >= 3 ? '' : loadingDots.current + '.';
         }, 500);
 
+        // Add travel planning steps to logs at intervals
+        let stepIndex = 0;
+        const logInterval = setInterval(() => {
+            if (stepIndex < TRAVEL_PLANNING_STEPS.length) {
+                setDisplayedLogs(prev => [...prev, TRAVEL_PLANNING_STEPS[stepIndex]]);
+                stepIndex++;
+            } else {
+                clearInterval(logInterval);
+            }
+        }, 900); // Show a new message every 900ms for quick progression
+
         // Cleanup
         return () => {
             if (dotAnimationId.current) {
                 clearInterval(dotAnimationId.current);
             }
+            clearInterval(logInterval);
             planeXAnim.stopAnimation();
             planeYAnim.stopAnimation();
             planeRotateAnim.stopAnimation();
+            planeOpacityAnim.stopAnimation();
             cloud1Anim.stopAnimation();
             cloud2Anim.stopAnimation();
             cloud3Anim.stopAnimation();
             cloud4Anim.stopAnimation();
             progressAnim.stopAnimation();
         };
-    }, [planeXAnim, planeYAnim, planeRotateAnim, cloud1Anim, cloud2Anim, cloud3Anim, cloud4Anim, progressAnim]);
+    }, [planeXAnim, planeYAnim, planeRotateAnim, planeOpacityAnim, cloud1Anim, cloud2Anim, cloud3Anim, cloud4Anim, progressAnim, onFinished]);
 
     return (
         <View style={styles.container}>
@@ -236,6 +303,7 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                             style={[
                                 styles.plane,
                                 {
+                                    opacity: planeOpacityAnim,
                                     transform: [
                                         { translateX: planeXAnim },
                                         { translateY: planeYAnim },
@@ -270,30 +338,31 @@ const LoadingScreen = ({ message = 'Loading', logs = [] }: LoadingScreenProps) =
                         </View>
                     </View>
 
-                    {/* Loading text */}
-                    <View style={styles.loadingTextContainer}>
-                        <Text style={styles.loadingText}>
-                            {message}{loadingDots.current}
-                        </Text>
+                    {/* Travel planning log console */}
+                    <View style={styles.logsContainer}>
+                        <Text style={styles.logsTitle}>CREATING YOUR ITINERARY</Text>
+                        <ScrollView
+                            ref={scrollViewRef}
+                            style={styles.logsScrollView}
+                            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                        >
+                            {displayedLogs.map((log, index) => (
+                                <Text key={index} style={[
+                                    styles.logText,
+                                    { opacity: 1 - (displayedLogs.length - index) * 0.1 }
+                                ]}>
+                                    <Text style={styles.logPrefix}>→ </Text>
+                                    {log}
+                                </Text>
+                            ))}
+                            {logs.map((log, index) => (
+                                <Text key={`user-${index}`} style={styles.userLogText}>
+                                    <Text style={styles.userLogPrefix}>✓ </Text>
+                                    {log}
+                                </Text>
+                            ))}
+                        </ScrollView>
                     </View>
-
-                    {/* Agent progress logs */}
-                    {logs.length > 0 && (
-                        <View style={styles.logsContainer}>
-                            <Text style={styles.logsTitle}>Progress:</Text>
-                            <ScrollView
-                                ref={scrollViewRef}
-                                style={styles.logsScrollView}
-                                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                            >
-                                {logs.map((log, index) => (
-                                    <Text key={index} style={styles.logText}>
-                                        {log}
-                                    </Text>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
                 </View>
             </LinearGradient>
         </View>
@@ -385,41 +454,55 @@ const styles = StyleSheet.create({
     progressBar: {
         height: '100%',
         backgroundColor: '#a78bfa',
-    },
-    loadingTextContainer: {
-        width: '100%',
-        marginBottom: 32,
-    },
-    loadingText: {
-        fontSize: 18,
-        fontFamily: FontFamily.montserratSemiBold,
-        color: '#FFFFFF',
-        textAlign: 'center',
+        borderRadius: 2,
     },
     logsContainer: {
         marginTop: Spacing.md,
-        backgroundColor: 'rgba(30, 41, 59, 0.7)',
+        backgroundColor: 'rgba(30, 41, 59, 0.9)',
         borderRadius: BorderRadius.md,
         padding: Spacing.sm,
-        maxHeight: 150,
-        width: '90%',
+        maxHeight: 180,
+        width: '95%',
         borderWidth: 1,
         borderColor: 'rgba(167, 139, 250, 0.3)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
     },
     logsTitle: {
         color: '#d8b4fe',
-        fontFamily: FontFamily.montserratMedium,
-        fontSize: 14,
-        marginBottom: Spacing.xs,
+        fontFamily: FontFamily.montserratSemiBold,
+        fontSize: 20,
+        marginBottom: Spacing.sm,
+        letterSpacing: 0.5,
+        textAlign: 'center',
+        textTransform: 'uppercase',
     },
     logsScrollView: {
-        maxHeight: 120,
+        maxHeight: 150,
     },
     logText: {
         color: '#cbd5e1',
         fontFamily: FontFamily.montserratRegular,
         fontSize: 12,
-        marginBottom: 4,
+        marginBottom: 6,
+        letterSpacing: 0.2,
+    },
+    logPrefix: {
+        color: '#a78bfa',
+        fontWeight: '600',
+    },
+    userLogText: {
+        color: '#94f3e4',
+        fontFamily: FontFamily.montserratMedium,
+        fontSize: 12,
+        marginBottom: 6,
+    },
+    userLogPrefix: {
+        color: '#10b981',
+        fontWeight: '600',
     },
 });
 

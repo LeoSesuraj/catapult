@@ -607,44 +607,16 @@ export default function ItineraryScreen() {
             <SafeAreaView style={styles.safeArea}>
                 <Stack.Screen
                     options={{
-                        title: 'Trip Itinerary',
-                        headerShown: true,
-                        headerLeft: () => (
-                            <TouchableOpacity
-                                onPress={() => router.replace('/')}
-                                style={styles.headerButton}
-                            >
-                                <Feather name="chevron-left" size={24} color={THEME.TEXT_PRIMARY} />
-                            </TouchableOpacity>
-                        ),
-                        headerRight: () => (
-                            <View style={styles.headerRightContainer}>
-                                <TouchableOpacity
-                                    style={styles.headerButton}
-                                    onPress={() => setIsEditMode(!isEditMode)}
-                                >
-                                    <Feather name={isEditMode ? "check" : "edit-2"} size={20} color={THEME.TEXT_PRIMARY} />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.headerButton}
-                                    onPress={() => {
-                                        Alert.alert(
-                                            "Itinerary Options",
-                                            "What would you like to do?",
-                                            [
-                                                { text: "Share", onPress: () => console.log("Share pressed") },
-                                                { text: "Export", onPress: () => console.log("Export pressed") },
-                                                { text: "Cancel", style: "cancel" },
-                                            ]
-                                        );
-                                    }}
-                                >
-                                    <Feather name="more-horizontal" size={24} color={THEME.TEXT_PRIMARY} />
-                                </TouchableOpacity>
-                            </View>
-                        ),
+                        headerShown: false
                     }}
                 />
+                <TouchableOpacity
+                    onPress={() => router.replace('/')}
+                    style={styles.backButtonContainer}
+                >
+                    <Feather name="chevron-left" size={28} color={THEME.TEXT_PRIMARY} />
+                    <Text style={styles.backButtonText}>Back</Text>
+                </TouchableOpacity>
                 <GestureHandlerRootView style={{ flex: 1 }}>
                     <View style={styles.headerContainer}>
                         <Text style={styles.headerTitle}>
@@ -843,22 +815,44 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    headerButton: {
-        padding: 8,
+    backButtonContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: THEME.CARD_BACKGROUND,
+        borderRadius: 12,
+        margin: 16,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+            },
+            android: { elevation: 3 },
+        }),
+    },
+    backButtonText: {
+        fontSize: 18,
+        color: THEME.TEXT_PRIMARY,
+        marginLeft: 8,
+        fontWeight: '600',
     },
     headerContainer: {
         marginBottom: 24,
-        padding: 16,
+        padding: 20,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 36,
         fontWeight: 'bold',
         color: THEME.TEXT_PRIMARY,
-        marginBottom: 4,
+        marginBottom: 8,
     },
     headerSubtitle: {
-        fontSize: 16,
+        fontSize: 20,
         color: THEME.TEXT_SECONDARY,
+        fontWeight: '500',
     },
     listContainer: {
         padding: 16,
@@ -1184,9 +1178,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: THEME.TEXT_TERTIARY,
         textAlign: 'center',
-    },
-    headerRightContainer: {
-        flexDirection: 'row',
     },
     dayHeaderRight: {
         flexDirection: 'row',
