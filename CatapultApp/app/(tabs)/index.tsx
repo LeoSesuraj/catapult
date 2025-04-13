@@ -90,10 +90,10 @@ export default function TripsScreen() {
           <View style={styles.header}>
             <Text style={styles.headerTitle}>My Trips</Text>
             <View style={styles.headerButtons}>
-              <TouchableOpacity style={styles.testButton} onPress={handleTestItinerary}>
+              {/* <TouchableOpacity style={styles.testButton} onPress={handleTestItinerary}>
                 <FontAwesome name="list" size={16} color="#FFFFFF" style={styles.buttonIcon} />
                 <Text style={styles.buttonText}>Test Itinerary</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
               <TouchableOpacity style={styles.createButton} onPress={handleCreateTrip}>
                 <FontAwesome name="plus" size={16} color="#FFFFFF" style={styles.createButtonIcon} />
                 <Text style={styles.createButtonText}>New Trip</Text>

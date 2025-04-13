@@ -802,87 +802,35 @@ export default function ItineraryDetailScreen() {
                     style={styles.gradient}
                 >
                     <SafeAreaView style={styles.safeArea}>
-                        <Stack.Screen
-                            options={{
-                                title: storedItinerary?.itinerary[0]?.events[0]?.details?.arrival?.city || 'Trip Details',
-                                headerShown: true,
-                                headerTransparent: true,
-                                headerTintColor: THEME.TEXT_PRIMARY,
-                                headerTitleStyle: styles.headerTitle,
-                                headerLeft: () => (
-                                    <View style={styles.headerLeftContainer}>
-                                        <TouchableOpacity
-                                            onPress={() => router.back()}
-                                            style={styles.backButton}
-                                        >
-                                            <Feather name="chevron-left" size={24} color={THEME.TEXT_PRIMARY} />
-                                        </TouchableOpacity>
-                                        <Text style={styles.headerCityText}>
-                                            {storedItinerary?.itinerary[0]?.events[0]?.details?.departure?.city || 'Departure'}
-                                        </Text>
-                                    </View>
-                                ),
-                                headerRight: () => (
-                                    <View style={styles.headerRightContainer}>
-                                        <TouchableOpacity
-                                            style={styles.headerButton}
-                                            onPress={() => {
-                                                Alert.alert(
-                                                    "Itinerary Options",
-                                                    "What would you like to do?",
-                                                    [
-                                                        {
-                                                            text: "Share",
-                                                            onPress: () => console.log("Share pressed")
-                                                        },
-                                                        {
-                                                            text: "Export",
-                                                            onPress: () => console.log("Export pressed")
-                                                        },
-                                                        {
-                                                            text: "Cancel",
-                                                            style: "cancel"
-                                                        }
-                                                    ]
-                                                );
-                                            }}
-                                        >
-                                            <Feather name="more-horizontal" size={24} color={THEME.TEXT_PRIMARY} />
-                                        </TouchableOpacity>
-                                    </View>
-                                )
-                            }}
-                        />
-
-                        {/* Trip Description Section */}
-                        <View style={styles.tripDescriptionContainer}>
-                            <Text style={styles.tripTitle}>
-                                {storedItinerary?.itinerary[0]?.events[0]?.details?.departure?.city || 'From'} to {storedItinerary?.itinerary[0]?.events[0]?.details?.arrival?.city || 'Destination'}
-                            </Text>
+                        <Stack.Screen options={{ headerShown: false }} />
+                        <View style={styles.tripHeader}>
+                            <View style={styles.headerRow}>
+                                <TouchableOpacity
+                                    onPress={() => router.replace("/(tabs)")}
+                                    style={styles.backButton}
+                                >
+                                    <Feather name="chevron-left" size={24} color={THEME.TEXT_PRIMARY} />
+                                    <Text style={styles.backText}>Trips</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.optionsButton}
+                                    onPress={() => Alert.alert('Options', 'Share/Export coming soon')}
+                                >
+                                    <Feather name="more-horizontal" size={24} color={THEME.TEXT_PRIMARY} />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={styles.tripTitle}>{trip?.location}</Text>
                             <Text style={styles.tripDates}>
-                                {moment(storedItinerary?.itinerary[0]?.date).format('MMM D')} - {moment(storedItinerary?.itinerary[storedItinerary.itinerary.length - 1]?.date).format('MMM D, YYYY')}
-                            </Text>
-                            <Text style={styles.tripDescription}>
-                                {trip?.reason_for_trip === 'business'
-                                    ? 'Business trip with carefully planned meetings and accommodations.'
-                                    : 'Personal trip with a mix of must-see attractions and flexible time to explore.'}
+                                {moment(trip?.start_time).format('MMM D')} - {moment(trip?.end_time).format('MMM D, YYYY')}
                             </Text>
                             <View style={styles.tripStats}>
-                                <View style={styles.tripStat}>
-                                    <Text style={styles.tripStatNumber}>{days.length}</Text>
-                                    <Text style={styles.tripStatLabel}>Days</Text>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>{days.length}</Text>
+                                    <Text style={styles.statLabel}>Days</Text>
                                 </View>
-                                <View style={styles.tripStat}>
-                                    <Text style={styles.tripStatNumber}>
-                                        {days.reduce((total, day) => total + day.activities.length, 0)}
-                                    </Text>
-                                    <Text style={styles.tripStatLabel}>Activities</Text>
-                                </View>
-                                <View style={styles.tripStat}>
-                                    <Text style={styles.tripStatNumber}>
-                                        ${trip?.budget?.toLocaleString()}
-                                    </Text>
-                                    <Text style={styles.tripStatLabel}>Budget</Text>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statValue}>{days.reduce((sum, day) => sum + day.activities.length, 0)}</Text>
+                                    <Text style={styles.statLabel}>Events</Text>
                                 </View>
                             </View>
                         </View>
@@ -1082,19 +1030,65 @@ export default function ItineraryDetailScreen() {
 
 // Styles - organized for easier generation and modification
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: THEME.BACKGROUND,
+    container: { flex: 1 },
+    gradient: { flex: 1 },
+    safeArea: { flex: 1 },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
     },
-    gradient: {
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 8,
+    },
+    backText: {
+        color: THEME.TEXT_PRIMARY,
+        fontSize: 16,
+        marginLeft: 4,
+        fontWeight: '500',
+    },
+    optionsButton: {
+        padding: 8,
+    },
+    tripHeader: {
+        padding: 16,
+        backgroundColor: THEME.CARD_BACKGROUND,
+        borderBottomWidth: 1,
+        borderBottomColor: THEME.BORDER,
+    },
+    tripTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: THEME.TEXT_PRIMARY,
+        marginBottom: 8
+    },
+    tripDates: {
+        fontSize: 16,
+        color: THEME.TEXT_SECONDARY,
+        marginBottom: 16
+    },
+    tripStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: THEME.BORDER,
+    },
+    statItem: {
+        alignItems: 'center',
         flex: 1,
     },
-    safeArea: {
-        flex: 1,
+    statValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: THEME.TEXT_PRIMARY
     },
-    content: {
-        flex: 1,
-        paddingTop: 60,
+    statLabel: {
+        fontSize: 12,
+        color: THEME.TEXT_SECONDARY
     },
     loadingContainer: {
         flex: 1,
@@ -1134,9 +1128,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
-    },
-    headerButton: {
-        padding: 8,
     },
     headerContainer: {
         marginBottom: 24,
@@ -1375,31 +1366,6 @@ const styles = StyleSheet.create({
     headerRightContainer: {
         flexDirection: 'row',
     },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: THEME.TEXT_PRIMARY,
-        fontSize: 16,
-        marginLeft: 8,
-    },
-    dayIndicator: {
-        fontSize: 12,
-        color: THEME.TEXT_TERTIARY,
-        marginTop: 2,
-    },
-    fullViewDateHeader: {
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: THEME.BORDER,
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    fullViewDateText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: THEME.TEXT_PRIMARY,
-    },
     flightCard: {
         backgroundColor: THEME.CARD_BACKGROUND,
         borderRadius: 8,
@@ -1531,49 +1497,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginLeft: 8,
     },
-    tripDescriptionContainer: {
-        padding: 20,
-        paddingTop: 100, // Extra padding for header
-        backgroundColor: THEME.BACKGROUND_LIGHTER,
+    fullViewDateHeader: {
+        paddingVertical: 8,
         borderBottomWidth: 1,
         borderBottomColor: THEME.BORDER,
-    },
-    tripTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: THEME.TEXT_PRIMARY,
+        marginTop: 16,
         marginBottom: 8,
     },
-    tripDates: {
+    fullViewDateText: {
         fontSize: 16,
-        color: THEME.TEXT_SECONDARY,
-        marginBottom: 12,
-    },
-    tripDescription: {
-        fontSize: 14,
-        color: THEME.TEXT_TERTIARY,
-        lineHeight: 20,
-        marginBottom: 16,
-    },
-    tripStats: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: THEME.BORDER,
-    },
-    tripStat: {
-        alignItems: 'center',
-    },
-    tripStatNumber: {
-        fontSize: 20,
         fontWeight: 'bold',
         color: THEME.TEXT_PRIMARY,
-        marginBottom: 4,
-    },
-    tripStatLabel: {
-        fontSize: 12,
-        color: THEME.TEXT_TERTIARY,
     },
     flightIcon: {
         marginTop: 8,
