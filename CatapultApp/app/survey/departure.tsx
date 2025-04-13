@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Keyboard, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,26 +8,118 @@ import { FontFamily, Spacing, BorderRadius, Shadow } from '../../constants/Theme
 import { useSurvey } from './SurveyContext';
 import { CITIES } from '../data/cities';
 
+// Fuzzy search scoring function
+const getMatchScore = (city: string, query: string): number => {
+    const cityLower = city.toLowerCase();
+    const queryLower = query.toLowerCase();
+
+    // Exact match gets highest priority
+    if (cityLower === queryLower) return 100;
+    // Starts with gets second highest priority
+    if (cityLower.startsWith(queryLower)) return 75;
+    // Contains gets third priority
+    if (cityLower.includes(queryLower)) return 50;
+
+    // Fuzzy match score
+    let score = 0;
+    let cityIndex = 0;
+    for (let queryChar of queryLower) {
+        while (cityIndex < cityLower.length) {
+            if (cityLower[cityIndex] === queryChar) {
+                score += 1;
+                cityIndex++;
+                break;
+            }
+            cityIndex++;
+        }
+    }
+    return score;
+};
+
+// Highlight matching text component
+const HighlightedText = ({ text, highlight }: { text: string; highlight: string }) => {
+    if (!highlight.trim()) {
+        return <Text style={styles.suggestionText}>{text}</Text>;
+    }
+
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return (
+        <Text style={styles.suggestionText}>
+            {parts.map((part, index) =>
+                part.toLowerCase() === highlight.toLowerCase() ? (
+                    <Text key={index} style={styles.highlightedText}>{part}</Text>
+                ) : (
+                    <Text key={index}>{part}</Text>
+                )
+            )}
+        </Text>
+    );
+};
+
 export default function Departure() {
     const router = useRouter();
     const { updateSurveyData, surveyData } = useSurvey();
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredCities, setFilteredCities] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [rotationAnim] = useState(new Animated.Value(0));
+
+    const startRotationAnimation = () => {
+        Animated.sequence([
+            Animated.timing(rotationAnim, {
+                toValue: 1,
+                duration: 4000, // Much slower - 4 seconds per rotation
+                useNativeDriver: true,
+            }),
+            Animated.timing(rotationAnim, {
+                toValue: 0,
+                duration: 0,
+                useNativeDriver: true,
+            })
+        ]).start(() => startRotationAnimation());
+    };
+
+    useEffect(() => {
+        startRotationAnimation();
+    }, []);
+
+    const spin = rotationAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['45deg', '-315deg'] // Start at 45 degrees and rotate counter-clockwise
+    });
 
     useEffect(() => {
         if (searchQuery.length > 0) {
-            const filtered = CITIES.filter(city =>
-                city.toLowerCase().includes(searchQuery.toLowerCase()) &&
-                city.toLowerCase() !== surveyData.destination?.toLowerCase()
-            );
-            setFilteredCities(filtered);
+            const scored = CITIES
+                .filter(city => city.toLowerCase() !== surveyData.destination?.toLowerCase())
+                .map(city => ({
+                    city,
+                    score: getMatchScore(city, searchQuery)
+                }))
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .map(item => item.city)
+                .slice(0, 10);  // Limit to top 10 results
+
+            setFilteredCities(scored);
             setShowSuggestions(true);
+            setSelectedIndex(-1);
         } else {
             setFilteredCities([]);
             setShowSuggestions(false);
         }
     }, [searchQuery]);
+
+    const handleKeyPress = (e: any) => {
+        if (e.nativeEvent.key === 'ArrowDown') {
+            setSelectedIndex(prev => Math.min(prev + 1, filteredCities.length - 1));
+        } else if (e.nativeEvent.key === 'ArrowUp') {
+            setSelectedIndex(prev => Math.max(prev - 1, -1));
+        } else if (e.nativeEvent.key === 'Enter' && selectedIndex >= 0) {
+            handleCitySelect(filteredCities[selectedIndex]);
+        }
+    };
 
     const handleCitySelect = (city: string) => {
         setSearchQuery(city);
@@ -45,13 +137,18 @@ export default function Departure() {
         router.back();
     };
 
-    const renderCityItem = ({ item }: { item: string }) => (
+    const renderCityItem = ({ item, index }: { item: string; index: number }) => (
         <TouchableOpacity
-            style={styles.suggestionItem}
+            style={[
+                styles.suggestionItem,
+                index === selectedIndex && styles.selectedSuggestion
+            ]}
             onPress={() => handleCitySelect(item)}
         >
-            <FontAwesome name="plane" size={16} color="#4299E1" style={[styles.suggestionIcon, { transform: [{ rotate: '-45deg' }] }]} />
-            <Text style={styles.suggestionText}>{item}</Text>
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <FontAwesome name="plane" size={16} color="#4299E1" />
+            </Animated.View>
+            <HighlightedText text={item} highlight={searchQuery} />
         </TouchableOpacity>
     );
 
@@ -93,6 +190,7 @@ export default function Departure() {
                                     placeholder="Search for a city"
                                     placeholderTextColor="#718096"
                                     autoFocus
+                                    onKeyPress={handleKeyPress}
                                 />
                                 {searchQuery.length > 0 && (
                                     <TouchableOpacity
@@ -228,4 +326,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: FontFamily.montserratMedium,
     },
-}); 
+    highlightedText: {
+        backgroundColor: 'rgba(66, 153, 225, 0.3)',
+        color: '#FFFFFF',
+    },
+    selectedSuggestion: {
+        backgroundColor: 'rgba(66, 153, 225, 0.2)',
+    },
+} as const); 

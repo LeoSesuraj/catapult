@@ -30,7 +30,7 @@ const LoadingScreen = () => {
                 // Horizontal: Left to right with smooth easing
                 Animated.timing(planeXAnim, {
                     toValue: width + 50,
-                    duration: 10000,
+                    duration: 5000,
                     easing: Easing.bezier(0.4, 0, 0.2, 1),
                     useNativeDriver: true,
                 }),
@@ -39,13 +39,13 @@ const LoadingScreen = () => {
                     Animated.sequence([
                         Animated.timing(planeYAnim, {
                             toValue: -12, // Increased amplitude
-                            duration: 2500,
+                            duration: 1250,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                         Animated.timing(planeYAnim, {
                             toValue: 12, // Increased amplitude
-                            duration: 2500,
+                            duration: 1250,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
@@ -57,13 +57,13 @@ const LoadingScreen = () => {
                     Animated.sequence([
                         Animated.timing(planeRotateAnim, {
                             toValue: 5,
-                            duration: 2500,
+                            duration: 1250,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
                         Animated.timing(planeRotateAnim, {
                             toValue: -5,
-                            duration: 2500,
+                            duration: 1250,
                             easing: Easing.inOut(Easing.sin),
                             useNativeDriver: true,
                         }),
@@ -79,7 +79,7 @@ const LoadingScreen = () => {
             Animated.sequence([
                 Animated.timing(cloud1Anim, {
                     toValue: 1,
-                    duration: 8000,
+                    duration: 4000,
                     useNativeDriver: true,
                 }),
                 Animated.timing(cloud1Anim, {
@@ -94,7 +94,7 @@ const LoadingScreen = () => {
             Animated.sequence([
                 Animated.timing(cloud2Anim, {
                     toValue: 1,
-                    duration: 12000,
+                    duration: 6000,
                     useNativeDriver: true,
                 }),
                 Animated.timing(cloud2Anim, {
@@ -108,7 +108,7 @@ const LoadingScreen = () => {
         // Progress animation
         Animated.timing(progressAnim, {
             toValue: 1,
-            duration: 10000,
+            duration: 5000,
             useNativeDriver: false,
         }).start();
 

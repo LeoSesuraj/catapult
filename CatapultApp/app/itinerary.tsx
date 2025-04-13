@@ -282,7 +282,10 @@ export default function ItineraryScreen() {
 
                 // Save the trip data and get the ID
                 const tripId = await saveTripData(tripData);
-                setTrip({ ...tripData, id: tripId });
+                setTrip({
+                    ...tripData,
+                    id: tripId as string
+                } as TripData);
 
                 console.log("Trip saved with ID:", tripId);
 
@@ -658,14 +661,6 @@ export default function ItineraryScreen() {
                             </View>
                         </View>
 
-                        {/* Add Event Button */}
-                        <TouchableOpacity
-                            style={styles.addEventButton}
-                            onPress={handleAddEvent}
-                        >
-                            <Feather name="plus" size={24} color={THEME.TEXT_PRIMARY} />
-                        </TouchableOpacity>
-
                         <FlatList
                             data={days}
                             renderItem={renderDay}
@@ -925,7 +920,7 @@ const styles = StyleSheet.create({
     },
     listContainer: {
         padding: 16,
-        paddingBottom: 120, // Add extra padding for the add button
+        paddingBottom: 40,
     },
     dayContainer: { marginBottom: 24 },
     dayHeader: {
@@ -1008,7 +1003,7 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
@@ -1164,21 +1159,5 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 12,
-    },
-    addEventButton: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        backgroundColor: THEME.PRIMARY,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 999,
-        ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
-            android: { elevation: 5 },
-        }),
     },
 });
