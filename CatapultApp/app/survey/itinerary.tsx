@@ -75,13 +75,6 @@ export default function Itinerary() {
 
                             // 6. Navigate to the itinerary view
                             router.push('/test-itinerary');
-
-                            // Show success message
-                            Alert.alert(
-                                "Trip Created!",
-                                "Your trip has been created and saved. You can access it anytime from the home screen.",
-                                [{ text: "OK" }]
-                            );
                         } catch (error) {
                             console.error('Error creating trip:', error);
                             Alert.alert(
