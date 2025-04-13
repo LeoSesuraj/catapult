@@ -339,4 +339,13 @@ export const generateSampleItinerary = (
     };
 
     return sampleItinerary;
-}; 
+};
+
+const ItineraryStorage = {
+    storeItinerary,
+    getItinerary,
+    generateGptItinerary,
+    generateSampleItinerary
+};
+
+export default ItineraryStorage; 
