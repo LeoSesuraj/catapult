@@ -14,8 +14,8 @@ let API_BASE_URL: string;
 
 if (__DEV__) {
     // Development environment
-    // Use the actual IP address from the server logs for all devices
-    API_BASE_URL = 'http://172.20.10.6:5000/api';
+    // Use the Wi-Fi IP address for local development
+    API_BASE_URL = 'http://172.20.10.2:5000/api';
 } else {
     // Production environment - replace with your actual deployed API URL
     API_BASE_URL = 'https://your-api-domain.com/api';

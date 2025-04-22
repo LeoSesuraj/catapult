@@ -1,21 +1,21 @@
 {
   "dates": {
-    "start": "2025-04-22",
-    "end": "2025-04-23"
+    "start": "2025-04-21",
+    "end": "2025-04-24"
   },
   "destination": "Phoenix",
   "origin": "Los Angeles",
   "flight": {
-    "airline": "Delta",
-    "flight_number": "DL650",
-    "departure": "2025-04-22T12:45:00",
-    "arrival": "2025-04-22T14:30:00",
-    "price": 395.19,
+    "airline": "American Airlines",
+    "flight_number": "AA360",
+    "departure": "2025-04-21T10:15:00",
+    "arrival": "2025-04-21T12:00:00",
+    "price": 341.64,
     "currency": "USD"
   },
   "hotel": {
-    "name": "BEST WESTERN INN OF CHANDLER",
-    "price": 142.04,
+    "name": "MARRIOTT VAC CLUB CANYON VILLA",
+    "price": 629.27,
     "address": "Address not available",
     "rating": 0,
     "available": true
@@ -29,25 +29,77 @@
           "name": "Sightseeing Tour in Phoenix",
           "description": "Guided tour of Phoenix's main attractions",
           "location": "Phoenix Downtown",
-          "cost": 59.61
+          "cost": 42.25
         },
         {
           "time": "Afternoon",
           "name": "Local Cuisine & Shopping in Phoenix",
           "description": "Sample the best food and shops in Phoenix",
           "location": "Phoenix Market District",
-          "cost": 68.12
+          "cost": 50.08
         },
         {
           "time": "Evening",
           "name": "Nightlife Experience in Phoenix",
           "description": "Experience Phoenix after dark with dinner and entertainment",
           "location": "Phoenix Entertainment District",
-          "cost": 111.6
+          "cost": 149.47
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "activities": [
+        {
+          "time": "Morning",
+          "name": "Sightseeing Tour in Phoenix",
+          "description": "Guided tour of Phoenix's main attractions",
+          "location": "Phoenix Downtown",
+          "cost": 52.13
+        },
+        {
+          "time": "Afternoon",
+          "name": "Local Cuisine & Shopping in Phoenix",
+          "description": "Sample the best food and shops in Phoenix",
+          "location": "Phoenix Market District",
+          "cost": 58.4
+        },
+        {
+          "time": "Evening",
+          "name": "Nightlife Experience in Phoenix",
+          "description": "Experience Phoenix after dark with dinner and entertainment",
+          "location": "Phoenix Entertainment District",
+          "cost": 103.37
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "activities": [
+        {
+          "time": "Morning",
+          "name": "Sightseeing Tour in Phoenix",
+          "description": "Guided tour of Phoenix's main attractions",
+          "location": "Phoenix Downtown",
+          "cost": 60.92
+        },
+        {
+          "time": "Afternoon",
+          "name": "Local Cuisine & Shopping in Phoenix",
+          "description": "Sample the best food and shops in Phoenix",
+          "location": "Phoenix Market District",
+          "cost": 53.98
+        },
+        {
+          "time": "Evening",
+          "name": "Nightlife Experience in Phoenix",
+          "description": "Experience Phoenix after dark with dinner and entertainment",
+          "location": "Phoenix Entertainment District",
+          "cost": 114.55
         }
       ]
     }
   ],
-  "total_cost": 537.23,
+  "total_cost": 2229.45,
   "status": "complete"
 }
